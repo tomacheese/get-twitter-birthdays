@@ -8,9 +8,9 @@ import { withRetry } from './shared/retry'
 
 /**
  * CLIのエントリポイント。
- * @returns なし
+ * @returns 終了コード
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   let exitCode = 0
   try {
     const config = loadConfig()
@@ -64,10 +64,15 @@ async function main(): Promise<void> {
     await cleanupCycleTLS()
   }
 
-  process.exitCode = exitCode
+  return exitCode
 }
 
-main().catch((error: unknown) => {
-  console.error('Fatal error occurred', error)
-  process.exitCode = 1
-})
+main().then(
+  (exitCode) => {
+    process.exitCode = exitCode
+  },
+  (error: unknown) => {
+    console.error('Fatal error occurred', error)
+    process.exitCode = 1
+  }
+)

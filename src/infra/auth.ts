@@ -1,4 +1,5 @@
 import { Scraper } from '@the-convocation/twitter-scraper'
+import { CONFIG_PATH } from '../shared/config'
 import type { Config, Credentials } from '../shared/types'
 import { cycleTLSFetchWithProxy } from './cycletls'
 import { loadCachedCookies, saveCookies } from './storage'
@@ -11,6 +12,9 @@ import { loadCachedCookies, saveCookies } from './storage'
  * @param email メールアドレス
  * @param twoFactorSecret 2要素認証シークレット
  * @param maxRetries 最大リトライ回数
+ *
+ * @remarks
+ * 現状は 503 エラーのみリトライ対象とする。
  */
 async function loginWithRetry(
   scraper: Scraper,
@@ -56,7 +60,7 @@ export function resolveCredentials(config: Config | null): Credentials {
 
   if (!username || !password) {
     throw new Error(
-      'Missing Twitter credentials. Set TWITTER_USERNAME/TWITTER_PASSWORD or provide them in data/config.json'
+      `Missing Twitter credentials. Set TWITTER_USERNAME/TWITTER_PASSWORD or provide them in ${CONFIG_PATH}.`
     )
   }
 

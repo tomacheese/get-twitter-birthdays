@@ -88,9 +88,11 @@ export async function cycleTLSFetchWithProxy(
         proxyUrl.username = proxyUsername
         proxyUrl.password = proxyPassword
         proxy = proxyUrl.toString()
-      } catch {
+      } catch (error) {
+        console.warn('Failed to parse PROXY_SERVER URL', error)
+        const message = error instanceof Error ? error.message : String(error)
         throw new Error(
-          `Invalid PROXY_SERVER URL: ${proxyServer}. Expected format: host:port, http://host:port or https://host:port`
+          `Invalid PROXY_SERVER URL: ${proxyServer}. Expected format: host:port, http://host:port or https://host:port. (${message})`
         )
       }
     } else {

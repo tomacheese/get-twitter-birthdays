@@ -94,10 +94,9 @@ export interface ApiUser {
 }
 
 /**
- * Headers ライクなオブジェクトのインターフェース
- * undici の _Headers クラスや標準の Headers クラスに対応
+ * Headers互換の最小インターフェースを表す。
+ * undici の _Headers クラスや標準の Headers クラスに対応。
  */
-/** Headers互換の最小インターフェースを表す。 */
 export interface HeadersLike {
   entries?: () => IterableIterator<[string, string]>
   [Symbol.iterator]?: () => Iterator<[string, string]>

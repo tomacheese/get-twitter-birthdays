@@ -257,76 +257,76 @@ export async function fetchFollowingUsers(
       console.warn(
         `Already processed ${processedUsers} users (>= MAX_FOLLOWING_USERS=${maxUsers}). Skipping following fetch.`
       )
-      stage = 'details'
-    }
-    while (true) {
-      page += 1
-      if (maxPages > 0 && page > maxPages) {
-        console.warn(`Reached MAX_FOLLOWING_PAGES=${maxPages}, stopping.`)
-        break
-      }
-      console.log(`Fetching following list page ${page}...`)
-
-      const following = await withRetry(
-        () =>
-          client.getUserListApi().getFollowing({
-            userId,
-            cursor,
-            count: FOLLOWING_PAGE_SIZE,
-          }),
-        {
-          maxRetries: 3,
-          baseDelayMs: 2000,
-          operationName: 'Fetch following list',
-        }
-      )
-
-      let addedThisPage = 0
-      for (const entry of following.data.data) {
-        const user = entry.user
-        if (!user) {
-          continue
-        }
-        const userEntry = toResumeUserEntry(user)
-        if (!userEntry || usersById.has(userEntry.id)) {
-          continue
-        }
-        usersById.set(userEntry.id, userEntry)
-        addedThisPage += 1
-        processedUsers += 1
-        console.log(
-          `Processed ${processedUsers} users. Birthdays found: ${
-            [...usersById.values()].filter((item) => item.birthdate).length
-          }`
-        )
-        persistState('following')
-      }
-
-      console.log(
-        `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`
-      )
-      if (maxUsers > 0 && processedUsers >= maxUsers) {
-        console.warn(`Reached MAX_FOLLOWING_USERS=${maxUsers}, stopping.`)
-        break
-      }
-      if (addedThisPage === 0) {
-        emptyPages += 1
-        if (emptyPages >= maxEmptyPages) {
-          console.warn(
-            `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`
-          )
+    } else {
+      while (true) {
+        page += 1
+        if (maxPages > 0 && page > maxPages) {
+          console.warn(`Reached MAX_FOLLOWING_PAGES=${maxPages}, stopping.`)
           break
         }
-      } else {
-        emptyPages = 0
+        console.log(`Fetching following list page ${page}...`)
+
+        const following = await withRetry(
+          () =>
+            client.getUserListApi().getFollowing({
+              userId,
+              cursor,
+              count: FOLLOWING_PAGE_SIZE,
+            }),
+          {
+            maxRetries: 3,
+            baseDelayMs: 2000,
+            operationName: 'Fetch following list',
+          }
+        )
+
+        let addedThisPage = 0
+        for (const entry of following.data.data) {
+          const user = entry.user
+          if (!user) {
+            continue
+          }
+          const userEntry = toResumeUserEntry(user)
+          if (!userEntry || usersById.has(userEntry.id)) {
+            continue
+          }
+          usersById.set(userEntry.id, userEntry)
+          addedThisPage += 1
+          processedUsers += 1
+          console.log(
+            `Processed ${processedUsers} users. Birthdays found: ${
+              [...usersById.values()].filter((item) => item.birthdate).length
+            }`
+          )
+          persistState('following')
+        }
+
+        console.log(
+          `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`
+        )
+        if (maxUsers > 0 && processedUsers >= maxUsers) {
+          console.warn(`Reached MAX_FOLLOWING_USERS=${maxUsers}, stopping.`)
+          break
+        }
+        if (addedThisPage === 0) {
+          emptyPages += 1
+          if (emptyPages >= maxEmptyPages) {
+            console.warn(
+              `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`
+            )
+            break
+          }
+        } else {
+          emptyPages = 0
+        }
+        const nextCursor = following.data.cursor.bottom?.value
+        if (!nextCursor || seenCursors.has(nextCursor)) {
+          break
+        }
+        seenCursors.add(nextCursor)
+        cursor = nextCursor
+        persistProgress('following')
       }
-      const nextCursor = following.data.cursor.bottom?.value
-      if (!nextCursor || seenCursors.has(nextCursor)) {
-        break
-      }
-      seenCursors.add(nextCursor)
-      cursor = nextCursor
-      persistProgress('following')
     }
 
     stage = 'details'

@@ -20,8 +20,7 @@ export async function withRetry<T>(
     operationName = 'operation',
   } = options
 
-  let attempt = 0
-  while (true) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       return await fn()
     } catch (error: unknown) {
@@ -37,14 +36,12 @@ export async function withRetry<T>(
             `${operationName} rate limited (${status}). Reset at ${resetDate.toLocaleString()} (in ${Math.ceil(delay / 1000)}s). Waiting...`
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
+          attempt -= 1
           continue
         }
       }
 
-      attempt += 1
-      const isLastAttempt = attempt >= maxRetries
-
-      if (isLastAttempt) {
+      if (attempt >= maxRetries) {
         throw error
       }
 
@@ -60,13 +57,15 @@ export async function withRetry<T>(
         continue
       }
 
-      const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
+      const delay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs)
       console.warn(
-        `${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay / 1000}s...`
+        `${operationName} failed (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay / 1000}s...`
       )
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
+
+  throw new Error(`${operationName} failed after ${maxRetries} attempts.`)
 }
 
 /**
