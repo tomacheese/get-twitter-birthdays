@@ -12,7 +12,10 @@ import type {
   ResumeState,
 } from '../shared/types'
 
-/** 出力先ディレクトリが存在することを保証する。 */
+/**
+ * 出力先ディレクトリが存在することを保証する。
+ * @param outputPath 出力ファイルのパス
+ */
 export function ensureOutputDir(outputPath: string): void {
   const outDir = path.dirname(outputPath)
   if (outDir && outDir !== '.' && !fs.existsSync(outDir)) {
@@ -20,19 +23,31 @@ export function ensureOutputDir(outputPath: string): void {
   }
 }
 
-/** 誕生日の出力JSONを保存する。 */
+/**
+ * 誕生日の出力JSONを保存する。
+ * @param outputPath 出力ファイルのパス
+ * @param output 出力内容
+ */
 export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
   ensureOutputDir(outputPath)
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2))
 }
 
-/** 進捗ファイルを保存する。 */
+/**
+ * 進捗ファイルを保存する。
+ * @param progressPath 進捗ファイルのパス
+ * @param state 進捗状態
+ */
 export function saveProgress(progressPath: string, state: ResumeState): void {
   ensureOutputDir(progressPath)
   fs.writeFileSync(progressPath, JSON.stringify(state, null, 2))
 }
 
-/** 進捗ファイルを読み込む。 */
+/**
+ * 進捗ファイルを読み込む。
+ * @param progressPath 進捗ファイルのパス
+ * @returns 進捗状態
+ */
 export function loadProgress(progressPath: string): ResumeState | null {
   if (!fs.existsSync(progressPath)) {
     return null
@@ -46,7 +61,10 @@ export function loadProgress(progressPath: string): ResumeState | null {
   }
 }
 
-/** 設定ファイルを読み込む。 */
+/**
+ * 設定ファイルを読み込む。
+ * @returns 設定情報
+ */
 export function loadConfig(): Config | null {
   if (!fs.existsSync(CONFIG_PATH)) {
     return null
@@ -55,7 +73,11 @@ export function loadConfig(): Config | null {
   return JSON.parse(raw) as Config
 }
 
-/** Cookieキャッシュの構造が正しいか判定する。 */
+/**
+ * Cookieキャッシュの構造が正しいか判定する。
+ * @param data 読み込んだデータ
+ * @returns 正しい場合は true
+ */
 function isValidCachedCookies(data: unknown): data is CachedCookies {
   if (typeof data !== 'object' || data === null) {
     return false
@@ -68,7 +90,10 @@ function isValidCachedCookies(data: unknown): data is CachedCookies {
   )
 }
 
-/** Cookieキャッシュを読み込む。 */
+/**
+ * Cookieキャッシュを読み込む。
+ * @returns Cookieキャッシュ
+ */
 export function loadCachedCookies(): CachedCookies | null {
   try {
     if (!fs.existsSync(COOKIE_CACHE_FILE)) {
@@ -90,7 +115,11 @@ export function loadCachedCookies(): CachedCookies | null {
   }
 }
 
-/** Cookieキャッシュを保存する。 */
+/**
+ * Cookieキャッシュを保存する。
+ * @param authToken 認証トークン
+ * @param ct0 CSRFトークン
+ */
 export function saveCookies(authToken: string, ct0: string): void {
   const dir = path.dirname(COOKIE_CACHE_FILE)
   if (dir && dir !== '.' && !fs.existsSync(dir)) {

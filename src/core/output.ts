@@ -5,7 +5,11 @@ import type {
   ResumeUserEntry,
 } from '../shared/types'
 
-/** 誕生日情報を表示用の文字列に整形する。 */
+/**
+ * 誕生日情報を表示用の文字列に整形する。
+ * @param birthdate 誕生日情報
+ * @returns 表示用文字列
+ */
 export function formatBirthdate(birthdate: BirthdateInfo): string {
   const month = String(birthdate.month).padStart(2, '0')
   const day = String(birthdate.day).padStart(2, '0')
@@ -15,7 +19,12 @@ export function formatBirthdate(birthdate: BirthdateInfo): string {
   return `${month}-${day}`
 }
 
-/** 取得済みユーザーから出力JSONを構築する。 */
+/**
+ * 取得済みユーザーから出力JSONを構築する。
+ * @param usersById ユーザー情報のMap
+ * @param sourceUser 取得元のユーザー名
+ * @returns 出力JSON
+ */
 export function buildOutput(
   usersById: Map<string, ResumeUserEntry>,
   sourceUser: string

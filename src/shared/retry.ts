@@ -1,4 +1,9 @@
-/** 指定処理をリトライしながら実行する。 */
+/**
+ * 指定処理をリトライしながら実行する。
+ * @param fn 実行する非同期処理
+ * @param options リトライ設定
+ * @returns 処理結果
+ */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: {
@@ -64,7 +69,11 @@ export async function withRetry<T>(
   }
 }
 
-/** 例外オブジェクトからHTTPステータスを取り出す。 */
+/**
+ * 例外オブジェクトからHTTPステータスを取り出す。
+ * @param error 例外オブジェクト
+ * @returns HTTPステータス
+ */
 export function getResponseStatus(error: unknown): number | undefined {
   return (error as { response?: Response }).response?.status
 }

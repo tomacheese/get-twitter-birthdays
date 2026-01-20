@@ -13,12 +13,21 @@ export const BATCH_SIZE = 100
 export const FOLLOWING_PAGE_SIZE = 200
 export const DEFAULT_MAX_EMPTY_PAGES = 3
 
-/** 環境変数のフラグ(1/それ以外)を判定する。 */
+/**
+ * 環境変数のフラグ(1/それ以外)を判定する。
+ * @param name 参照する環境変数名
+ * @returns true の場合は有効
+ */
 export function envFlag(name: string): boolean {
   return process.env[name] === '1'
 }
 
-/** 環境変数の数値を取得し、無効なら既定値を返す。 */
+/**
+ * 環境変数の数値を取得し、無効なら既定値を返す。
+ * @param name 参照する環境変数名
+ * @param fallback 変換できない場合の既定値
+ * @returns 解析済みの数値
+ */
 export function envNumber(name: string, fallback: number): number {
   const raw = process.env[name]
   if (raw === undefined || raw === '') {

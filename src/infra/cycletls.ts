@@ -6,13 +6,21 @@ import { writeResponseLog } from './logger'
 
 let cycleTLSInstancePromise: Promise<CycleTLSClient> | null = null
 
-/** CycleTLSクライアントを初期化して取得する。 */
+/**
+ * CycleTLSクライアントを初期化して取得する。
+ * @returns CycleTLSクライアント
+ */
 async function initCycleTLSWithProxy(): Promise<CycleTLSClient> {
   cycleTLSInstancePromise ??= initCycleTLS()
   return cycleTLSInstancePromise
 }
 
-/** CycleTLS経由でHTTPリクエストを送信する。 */
+/**
+ * CycleTLS経由でHTTPリクエストを送信する。
+ * @param input リクエストURL
+ * @param init リクエストオプション
+ * @returns レスポンス
+ */
 export async function cycleTLSFetchWithProxy(
   input: RequestInfo | URL,
   init?: RequestInit
@@ -150,7 +158,10 @@ export async function cycleTLSFetchWithProxy(
   })
 }
 
-/** CycleTLSのリソースをクリーンアップする。 */
+/**
+ * CycleTLSのリソースをクリーンアップする。
+ * @returns なし
+ */
 export async function cleanupCycleTLS(): Promise<void> {
   if (cycleTLSInstancePromise) {
     try {

@@ -3,7 +3,15 @@ import type { Config, Credentials } from '../shared/types'
 import { cycleTLSFetchWithProxy } from './cycletls'
 import { loadCachedCookies, saveCookies } from './storage'
 
-/** ログイン処理をリトライしながら実行する。 */
+/**
+ * ログイン処理をリトライしながら実行する。
+ * @param scraper スクレイパー
+ * @param username ユーザー名
+ * @param password パスワード
+ * @param email メールアドレス
+ * @param twoFactorSecret 2要素認証シークレット
+ * @param maxRetries 最大リトライ回数
+ */
 async function loginWithRetry(
   scraper: Scraper,
   username: string,
@@ -34,7 +42,11 @@ async function loginWithRetry(
   }
 }
 
-/** 設定ファイルと環境変数から認証情報を組み立てる。 */
+/**
+ * 設定ファイルと環境変数から認証情報を組み立てる。
+ * @param config 設定ファイル
+ * @returns 認証情報
+ */
 export function resolveCredentials(config: Config | null): Credentials {
   const username = process.env.TWITTER_USERNAME ?? config?.twitter?.username
   const password = process.env.TWITTER_PASSWORD ?? config?.twitter?.password
@@ -56,7 +68,11 @@ export function resolveCredentials(config: Config | null): Credentials {
   }
 }
 
-/** ログイン済みCookieを取得し、必要なら保存する。 */
+/**
+ * ログイン済みCookieを取得し、必要なら保存する。
+ * @param credentials 認証情報
+ * @returns 認証Cookie
+ */
 export async function getAuthCookies(credentials: Credentials): Promise<{
   authToken: string
   ct0: string

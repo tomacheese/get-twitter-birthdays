@@ -22,7 +22,12 @@ export type TwitterClient = Awaited<
   ReturnType<TwitterOpenApi['getClientFromCookies']>
 >
 
-/** 配列を指定サイズで分割する。 */
+/**
+ * 配列を指定サイズで分割する。
+ * @param items 元の配列
+ * @param size 1チャンクあたりの件数
+ * @returns 分割後の配列
+ */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
   for (let i = 0; i < items.length; i += size) {
@@ -31,7 +36,11 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks
 }
 
-/** APIの誕生日情報を出力用の型に正規化する。 */
+/**
+ * APIの誕生日情報を出力用の型に正規化する。
+ * @param birthdate APIの誕生日情報
+ * @returns 正規化した誕生日情報
+ */
 function normalizeBirthdate(
   birthdate?: ApiBirthdate | null
 ): BirthdateInfo | undefined {
@@ -47,7 +56,11 @@ function normalizeBirthdate(
   }
 }
 
-/** APIユーザー情報を進捗保存用の形式に変換する。 */
+/**
+ * APIユーザー情報を進捗保存用の形式に変換する。
+ * @param user APIユーザー情報
+ * @returns 進捗保存用のユーザー情報
+ */
 function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   const legacy = user.legacy
   if (!legacy?.screenName) {
@@ -65,7 +78,15 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   }
 }
 
-/** フォロー一覧と詳細情報を取得して誕生日出力を作成する。 */
+/**
+ * フォロー一覧と詳細情報を取得して誕生日出力を作成する。
+ * @param client Twitter APIクライアント
+ * @param userId 対象ユーザーID
+ * @param sourceUser 対象ユーザー名
+ * @param outputPath 出力ファイルのパス
+ * @param progressPath 進捗ファイルのパス
+ * @returns 誕生日出力
+ */
 export async function fetchFollowingUsers(
   client: TwitterClient,
   userId: string,
@@ -124,7 +145,12 @@ export async function fetchFollowingUsers(
 
   const maxPages = envNumber('MAX_FOLLOWING_PAGES', 0)
 
-  /** 進捗保存用の状態オブジェクトを構築する。 */
+  /**
+   * 進捗保存用の状態オブジェクトを構築する。
+   * @param stageValue 処理ステージ
+   * @param detailIndex 詳細取得のバッチ番号
+   * @returns 進捗状態
+   */
   const buildProgressState = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -140,7 +166,11 @@ export async function fetchFollowingUsers(
     detailBatchIndex: detailIndex,
   })
 
-  /** 進捗ファイルを保存する。 */
+  /**
+   * 進捗ファイルを保存する。
+   * @param stageValue 処理ステージ
+   * @param detailIndex 詳細取得のバッチ番号
+   */
   const persistProgress = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -148,7 +178,11 @@ export async function fetchFollowingUsers(
     saveProgress(progressPath, buildProgressState(stageValue, detailIndex))
   }
 
-  /** 出力と進捗をまとめて保存する。 */
+  /**
+   * 出力と進捗をまとめて保存する。
+   * @param stageValue 処理ステージ
+   * @param detailIndex 詳細取得のバッチ番号
+   */
   const persistState = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -157,12 +191,19 @@ export async function fetchFollowingUsers(
     persistProgress(stageValue, detailIndex)
   }
 
-  /** 追加の誕生日照会を実行可能か判定する。 */
+  /**
+   * 追加の誕生日照会を実行可能か判定する。
+   * @returns 実行可能なら true
+   */
   const canLookupBirthdate = (): boolean =>
     enableBirthdateLookup &&
     (maxBirthdateLookup === 0 || birthdateLookupCount < maxBirthdateLookup)
 
-  /** ユーザー単体APIで誕生日を再照会する。 */
+  /**
+   * ユーザー単体APIで誕生日を再照会する。
+   * @param screenName 対象のスクリーンネーム
+   * @returns 誕生日情報
+   */
   const lookupBirthdate = async (
     screenName: string
   ): Promise<BirthdateInfo | undefined> => {
@@ -183,7 +224,12 @@ export async function fetchFollowingUsers(
     )
   }
 
-  /** 取得したユーザー情報を既存Mapに反映する。 */
+  /**
+   * 取得したユーザー情報を既存Mapに反映する。
+   * @param user APIユーザー情報
+   * @param requireExisting 既存エントリが必須かどうか
+   * @returns 更新後のユーザー情報
+   */
   const upsertUser = (
     user: ApiUser,
     requireExisting = false

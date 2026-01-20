@@ -6,7 +6,10 @@ import { loadConfig, saveOutput } from './infra/storage'
 import { fetchFollowingUsers } from './core/following'
 import { withRetry } from './shared/retry'
 
-/** CLIのエントリポイント。 */
+/**
+ * CLIのエントリポイント。
+ * @returns なし
+ */
 async function main(): Promise<void> {
   let exitCode = 0
   try {
