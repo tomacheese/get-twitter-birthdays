@@ -1,0 +1,10 @@
+node_modules
+data
+.git
+.github
+.vscode
+dist
+coverage
+npm-debug.log
+pnpm-debug.log
+*.log

@@ -1,0 +1,12 @@
+services:
+  get-twitter-birthdays:
+    build: .
+    image: get-twitter-birthdays
+    volumes:
+      - ./data:/data
+    environment:
+      TWITTER_USERNAME: ${TWITTER_USERNAME}
+      TWITTER_PASSWORD: ${TWITTER_PASSWORD}
+      TWITTER_EMAIL_ADDRESS: ${TWITTER_EMAIL_ADDRESS}
+      RESPONSES_DIR: ${RESPONSES_DIR:-/data/responses}
+      RESPONSES_LOG_ENABLED: ${RESPONSES_LOG_ENABLED-}
