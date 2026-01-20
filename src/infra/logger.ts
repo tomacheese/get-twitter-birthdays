@@ -41,7 +41,7 @@ export function writeResponseLog(params: {
     }
     responseLogCounter += 1
     const index = String(responseLogCounter).padStart(6, '0')
-    const safeUrl = params.url.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80)
+    const safeUrl = params.url.replaceAll(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80)
     const baseName = `${index}_${params.method}_${safeUrl || 'response'}`
     const metaPath = path.join(dir, `${baseName}.json`)
     const bodyPath = path.join(dir, `${baseName}.body`)

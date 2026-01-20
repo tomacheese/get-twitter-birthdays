@@ -5,8 +5,12 @@ import {
   COOKIE_CACHE_FILE,
   COOKIE_EXPIRY_DAYS,
 } from '../shared/config'
-import type { CachedCookies, Config, ResumeState } from '../shared/types'
-import type { BirthdaysOutput } from '../shared/types'
+import type {
+  BirthdaysOutput,
+  CachedCookies,
+  Config,
+  ResumeState,
+} from '../shared/types'
 
 export function ensureOutputDir(outputPath: string): void {
   const outDir = path.dirname(outputPath)

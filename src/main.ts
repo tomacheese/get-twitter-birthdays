@@ -12,9 +12,7 @@ async function main(): Promise<void> {
     const config = loadConfig()
     const credentials = resolveCredentials(config)
 
-    if (!process.env.TWITTER_USERNAME) {
-      process.env.TWITTER_USERNAME = credentials.username
-    }
+    process.env.TWITTER_USERNAME ??= credentials.username
 
     const { authToken, ct0 } = await getAuthCookies(credentials)
 
@@ -37,7 +35,7 @@ async function main(): Promise<void> {
     )
 
     const currentUser = userResponse.data.user
-    const currentUserId = currentUser?.restId || currentUser?.id
+    const currentUserId = currentUser?.restId ?? currentUser?.id
     if (!currentUserId) {
       throw new Error('Failed to resolve current user id')
     }
@@ -62,7 +60,10 @@ async function main(): Promise<void> {
     await cleanupCycleTLS()
   }
 
-  process.exit(exitCode)
+  process.exitCode = exitCode
 }
 
-void main()
+main().catch((error: unknown) => {
+  console.error('Fatal error occurred', error)
+  process.exitCode = 1
+})

@@ -137,7 +137,7 @@ export async function cycleTLSFetchWithProxy(
     url,
     method,
     status: response.status,
-    headers: response.headers ?? {},
+    headers: response.headers,
     body: responseBody,
   })
 

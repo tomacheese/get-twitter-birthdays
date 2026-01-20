@@ -49,8 +49,8 @@ export function resolveCredentials(config: Config | null): Credentials {
   return {
     username,
     password,
-    emailAddress: emailAddress || undefined,
-    twoFactorSecret: twoFactorSecret || undefined,
+    emailAddress: emailAddress ?? undefined,
+    twoFactorSecret: twoFactorSecret ?? undefined,
   }
 }
 

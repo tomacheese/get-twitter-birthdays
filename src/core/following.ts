@@ -50,7 +50,7 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   if (!legacy?.screenName) {
     return null
   }
-  const restId = user.restId || user.id
+  const restId = user.restId ?? user.id
   if (!restId) {
     return null
   }
@@ -83,15 +83,15 @@ export async function fetchFollowingUsers(
   const enableBirthdateLookup = envFlag('PER_USER_BIRTHDATE_LOOKUP')
   const maxBirthdateLookup = envNumber('MAX_BIRTHDATE_LOOKUP', 0)
 
-  if (progress && progress.sourceUser === sourceUser) {
+  if (progress?.sourceUser === sourceUser) {
     stage = progress.stage
     cursor = progress.cursor
-    seenCursors = new Set(progress.seenCursors ?? [])
-    page = progress.page ?? 0
-    processedUsers = progress.processedUsers ?? 0
+    seenCursors = new Set(progress.seenCursors)
+    page = progress.page
+    processedUsers = progress.processedUsers
     missingBirthdateIds = progress.missingBirthdateIds
     detailBatchIndex = progress.detailBatchIndex ?? 0
-    for (const user of progress.users ?? []) {
+    for (const user of progress.users) {
       usersById.set(user.id, user)
     }
     console.log(
@@ -99,7 +99,7 @@ export async function fetchFollowingUsers(
     )
     if (envFlag('FORCE_DETAIL_REFRESH')) {
       stage = 'details'
-      missingBirthdateIds = Array.from(usersById.values())
+      missingBirthdateIds = [...usersById.values()]
         .filter((user) => !user.birthdate)
         .map((user) => user.id)
       detailBatchIndex = 0
@@ -127,10 +127,10 @@ export async function fetchFollowingUsers(
     sourceUser,
     stage: stageValue,
     cursor,
-    seenCursors: Array.from(seenCursors),
+    seenCursors: [...seenCursors],
     page,
     processedUsers,
-    users: Array.from(usersById.values()),
+    users: [...usersById.values()],
     missingBirthdateIds,
     detailBatchIndex: detailIndex,
   })
@@ -203,7 +203,7 @@ export async function fetchFollowingUsers(
       )
       stage = 'details'
     }
-    while (stage === 'following') {
+    while (true) {
       page += 1
       if (maxPages > 0 && page > maxPages) {
         console.warn(`Reached MAX_FOLLOWING_PAGES=${maxPages}, stopping.`)
@@ -240,8 +240,7 @@ export async function fetchFollowingUsers(
         processedUsers += 1
         console.log(
           `Processed ${processedUsers} users. Birthdays found: ${
-            Array.from(usersById.values()).filter((item) => item.birthdate)
-              .length
+            [...usersById.values()].filter((item) => item.birthdate).length
           }`
         )
         persistState('following')
@@ -265,7 +264,7 @@ export async function fetchFollowingUsers(
       } else {
         emptyPages = 0
       }
-      const nextCursor = following.data.cursor?.bottom?.value
+      const nextCursor = following.data.cursor.bottom?.value
       if (!nextCursor || seenCursors.has(nextCursor)) {
         break
       }
@@ -275,7 +274,7 @@ export async function fetchFollowingUsers(
     }
 
     stage = 'details'
-    missingBirthdateIds = Array.from(usersById.values())
+    missingBirthdateIds = [...usersById.values()]
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
@@ -287,7 +286,7 @@ export async function fetchFollowingUsers(
   }
 
   if (stage === 'details') {
-    missingBirthdateIds ??= Array.from(usersById.values())
+    missingBirthdateIds ??= [...usersById.values()]
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
@@ -398,12 +397,7 @@ export async function fetchFollowingUsers(
       }
     }
     stage = 'done'
-    persistProgress(
-      stage,
-      missingBirthdateIds
-        ? chunkArray(missingBirthdateIds, BATCH_SIZE).length
-        : 0
-    )
+    persistProgress(stage, chunkArray(missingBirthdateIds, BATCH_SIZE).length)
   }
 
   return buildOutput(usersById, sourceUser)
