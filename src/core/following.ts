@@ -22,6 +22,7 @@ export type TwitterClient = Awaited<
   ReturnType<TwitterOpenApi['getClientFromCookies']>
 >
 
+/** 配列を指定サイズで分割する。 */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
   for (let i = 0; i < items.length; i += size) {
@@ -30,6 +31,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks
 }
 
+/** APIの誕生日情報を出力用の型に正規化する。 */
 function normalizeBirthdate(
   birthdate?: ApiBirthdate | null
 ): BirthdateInfo | undefined {
@@ -45,6 +47,7 @@ function normalizeBirthdate(
   }
 }
 
+/** APIユーザー情報を進捗保存用の形式に変換する。 */
 function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   const legacy = user.legacy
   if (!legacy?.screenName) {
@@ -62,6 +65,7 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   }
 }
 
+/** フォロー一覧と詳細情報を取得して誕生日出力を作成する。 */
 export async function fetchFollowingUsers(
   client: TwitterClient,
   userId: string,
@@ -120,6 +124,7 @@ export async function fetchFollowingUsers(
 
   const maxPages = envNumber('MAX_FOLLOWING_PAGES', 0)
 
+  /** 進捗保存用の状態オブジェクトを構築する。 */
   const buildProgressState = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -135,6 +140,7 @@ export async function fetchFollowingUsers(
     detailBatchIndex: detailIndex,
   })
 
+  /** 進捗ファイルを保存する。 */
   const persistProgress = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -142,6 +148,7 @@ export async function fetchFollowingUsers(
     saveProgress(progressPath, buildProgressState(stageValue, detailIndex))
   }
 
+  /** 出力と進捗をまとめて保存する。 */
   const persistState = (
     stageValue: ResumeState['stage'],
     detailIndex?: number
@@ -150,10 +157,12 @@ export async function fetchFollowingUsers(
     persistProgress(stageValue, detailIndex)
   }
 
+  /** 追加の誕生日照会を実行可能か判定する。 */
   const canLookupBirthdate = (): boolean =>
     enableBirthdateLookup &&
     (maxBirthdateLookup === 0 || birthdateLookupCount < maxBirthdateLookup)
 
+  /** ユーザー単体APIで誕生日を再照会する。 */
   const lookupBirthdate = async (
     screenName: string
   ): Promise<BirthdateInfo | undefined> => {
@@ -174,6 +183,7 @@ export async function fetchFollowingUsers(
     )
   }
 
+  /** 取得したユーザー情報を既存Mapに反映する。 */
   const upsertUser = (
     user: ApiUser,
     requireExisting = false

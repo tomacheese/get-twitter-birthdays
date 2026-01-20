@@ -1,3 +1,4 @@
+/** 設定ファイルの構造を表す。 */
 export interface Config {
   twitter?: {
     username?: string
@@ -6,6 +7,7 @@ export interface Config {
   }
 }
 
+/** 認証に必要な資格情報を表す。 */
 export interface Credentials {
   username: string
   password: string
@@ -13,12 +15,14 @@ export interface Credentials {
   twoFactorSecret?: string
 }
 
+/** ローカルに保存するCookieキャッシュの形式を表す。 */
 export interface CachedCookies {
   auth_token: string
   ct0: string
   savedAt: number
 }
 
+/** 誕生日情報の構造を表す。 */
 export interface BirthdateInfo {
   day: number
   month: number
@@ -27,6 +31,7 @@ export interface BirthdateInfo {
   yearVisibility: string
 }
 
+/** 誕生日一覧の1件分の出力構造を表す。 */
 export interface BirthdayEntry {
   id: string
   screenName: string
@@ -36,6 +41,7 @@ export interface BirthdayEntry {
   profileUrl: string
 }
 
+/** 出力JSON全体の構造を表す。 */
 export interface BirthdaysOutput {
   generatedAt: string
   sourceUser: string
@@ -44,6 +50,7 @@ export interface BirthdaysOutput {
   birthdays: BirthdayEntry[]
 }
 
+/** 進捗ファイルに保存するユーザー情報を表す。 */
 export interface ResumeUserEntry {
   id: string
   screenName: string
@@ -51,6 +58,7 @@ export interface ResumeUserEntry {
   birthdate?: BirthdateInfo
 }
 
+/** 進捗保存の状態構造を表す。 */
 export interface ResumeState {
   sourceUser: string
   stage: 'following' | 'details' | 'done'
@@ -63,6 +71,7 @@ export interface ResumeState {
   detailBatchIndex?: number
 }
 
+/** APIレスポンス由来の誕生日情報を表す。 */
 export interface ApiBirthdate {
   day: number
   month: number
@@ -71,6 +80,7 @@ export interface ApiBirthdate {
   yearVisibility: string
 }
 
+/** APIレスポンス由来のユーザー情報を表す。 */
 export interface ApiUser {
   restId?: string
   id?: string
@@ -87,6 +97,7 @@ export interface ApiUser {
  * Headers ライクなオブジェクトのインターフェース
  * undici の _Headers クラスや標準の Headers クラスに対応
  */
+/** Headers互換の最小インターフェースを表す。 */
 export interface HeadersLike {
   entries?: () => IterableIterator<[string, string]>
   [Symbol.iterator]?: () => Iterator<[string, string]>

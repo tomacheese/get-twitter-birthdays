@@ -1,3 +1,4 @@
+/** 指定処理をリトライしながら実行する。 */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: {
@@ -63,6 +64,7 @@ export async function withRetry<T>(
   }
 }
 
+/** 例外オブジェクトからHTTPステータスを取り出す。 */
 export function getResponseStatus(error: unknown): number | undefined {
   return (error as { response?: Response }).response?.status
 }

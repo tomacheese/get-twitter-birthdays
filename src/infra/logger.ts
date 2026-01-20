@@ -5,6 +5,7 @@ import { RESPONSES_DIR, RESPONSES_LOG_ENABLED } from '../shared/config'
 let responseLogDir: string | null = null
 let responseLogCounter = 0
 
+/** レスポンスログ保存用のディレクトリを用意する。 */
 function ensureResponseLogDir(): string | null {
   if (!RESPONSES_LOG_ENABLED) {
     return null
@@ -27,6 +28,7 @@ function ensureResponseLogDir(): string | null {
   return responseLogDir
 }
 
+/** HTTPレスポンスをファイルに保存する。 */
 export function writeResponseLog(params: {
   url: string
   method: string

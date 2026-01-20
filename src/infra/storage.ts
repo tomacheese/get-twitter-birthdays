@@ -12,6 +12,7 @@ import type {
   ResumeState,
 } from '../shared/types'
 
+/** 出力先ディレクトリが存在することを保証する。 */
 export function ensureOutputDir(outputPath: string): void {
   const outDir = path.dirname(outputPath)
   if (outDir && outDir !== '.' && !fs.existsSync(outDir)) {
@@ -19,16 +20,19 @@ export function ensureOutputDir(outputPath: string): void {
   }
 }
 
+/** 誕生日の出力JSONを保存する。 */
 export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
   ensureOutputDir(outputPath)
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2))
 }
 
+/** 進捗ファイルを保存する。 */
 export function saveProgress(progressPath: string, state: ResumeState): void {
   ensureOutputDir(progressPath)
   fs.writeFileSync(progressPath, JSON.stringify(state, null, 2))
 }
 
+/** 進捗ファイルを読み込む。 */
 export function loadProgress(progressPath: string): ResumeState | null {
   if (!fs.existsSync(progressPath)) {
     return null
@@ -42,6 +46,7 @@ export function loadProgress(progressPath: string): ResumeState | null {
   }
 }
 
+/** 設定ファイルを読み込む。 */
 export function loadConfig(): Config | null {
   if (!fs.existsSync(CONFIG_PATH)) {
     return null
@@ -50,6 +55,7 @@ export function loadConfig(): Config | null {
   return JSON.parse(raw) as Config
 }
 
+/** Cookieキャッシュの構造が正しいか判定する。 */
 function isValidCachedCookies(data: unknown): data is CachedCookies {
   if (typeof data !== 'object' || data === null) {
     return false
@@ -62,6 +68,7 @@ function isValidCachedCookies(data: unknown): data is CachedCookies {
   )
 }
 
+/** Cookieキャッシュを読み込む。 */
 export function loadCachedCookies(): CachedCookies | null {
   try {
     if (!fs.existsSync(COOKIE_CACHE_FILE)) {
@@ -83,6 +90,7 @@ export function loadCachedCookies(): CachedCookies | null {
   }
 }
 
+/** Cookieキャッシュを保存する。 */
 export function saveCookies(authToken: string, ct0: string): void {
   const dir = path.dirname(COOKIE_CACHE_FILE)
   if (dir && dir !== '.' && !fs.existsSync(dir)) {
