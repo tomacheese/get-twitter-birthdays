@@ -24,8 +24,7 @@ COPY src src
 
 RUN mkdir -p /app/data
 
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline && \
-  pnpm approve-builds
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline
 
 ENV NODE_ENV=production
 ENV CONFIG_PATH="/data/config.json"

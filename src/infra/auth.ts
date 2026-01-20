@@ -9,7 +9,7 @@ async function loginWithRetry(
   password: string,
   email?: string,
   twoFactorSecret?: string,
-  maxRetries = 5,
+  maxRetries = 5
 ): Promise<void> {
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
@@ -42,7 +42,7 @@ export function resolveCredentials(config: Config | null): Credentials {
 
   if (!username || !password) {
     throw new Error(
-      'Missing Twitter credentials. Set TWITTER_USERNAME/TWITTER_PASSWORD or provide them in data/config.json',
+      'Missing Twitter credentials. Set TWITTER_USERNAME/TWITTER_PASSWORD or provide them in data/config.json'
     )
   }
 
@@ -74,7 +74,7 @@ export async function getAuthCookies(credentials: Credentials): Promise<{
     credentials.username,
     credentials.password,
     credentials.emailAddress,
-    credentials.twoFactorSecret,
+    credentials.twoFactorSecret
   )
 
   if (!(await scraper.isLoggedIn())) {

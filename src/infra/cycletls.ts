@@ -13,7 +13,7 @@ async function initCycleTLSWithProxy(): Promise<CycleTLSClient> {
 
 export async function cycleTLSFetchWithProxy(
   input: RequestInfo | URL,
-  init?: RequestInit,
+  init?: RequestInit
 ): Promise<Response> {
   const instance = await initCycleTLSWithProxy()
   const url =
@@ -54,7 +54,8 @@ export async function cycleTLSFetchWithProxy(
     } else if (init.body instanceof URLSearchParams) {
       body = init.body.toString()
       if (!headers['content-type']) {
-        headers['content-type'] = 'application/x-www-form-urlencoded;charset=UTF-8'
+        headers['content-type'] =
+          'application/x-www-form-urlencoded;charset=UTF-8'
       }
     } else {
       body = JSON.stringify(init.body)
@@ -79,7 +80,7 @@ export async function cycleTLSFetchWithProxy(
         proxy = proxyUrl.toString()
       } catch {
         throw new Error(
-          `Invalid PROXY_SERVER URL: ${proxyServer}. Expected format: host:port, http://host:port or https://host:port`,
+          `Invalid PROXY_SERVER URL: ${proxyServer}. Expected format: host:port, http://host:port or https://host:port`
         )
       }
     } else {
@@ -111,7 +112,7 @@ export async function cycleTLSFetchWithProxy(
       | 'trace'
       | 'options'
       | 'connect'
-      | 'patch',
+      | 'patch'
   )
 
   const responseHeaders = new Headers()
@@ -162,7 +163,7 @@ export async function cleanupCycleTLS(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.debug(
-      `twitter-scraper CycleTLS exit error (may not be initialized): ${message}`,
+      `twitter-scraper CycleTLS exit error (may not be initialized): ${message}`
     )
   }
 }

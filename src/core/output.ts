@@ -16,7 +16,7 @@ export function formatBirthdate(birthdate: BirthdateInfo): string {
 
 export function buildOutput(
   usersById: Map<string, ResumeUserEntry>,
-  sourceUser: string,
+  sourceUser: string
 ): BirthdaysOutput {
   const birthdays: BirthdayEntry[] = []
   for (const user of usersById.values()) {

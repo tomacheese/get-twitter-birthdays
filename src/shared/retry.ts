@@ -5,7 +5,7 @@ export async function withRetry<T>(
     baseDelayMs?: number
     maxDelayMs?: number
     operationName?: string
-  } = {},
+  } = {}
 ): Promise<T> {
   const {
     maxRetries = 3,
@@ -28,7 +28,7 @@ export async function withRetry<T>(
           const delay = Math.max(resetAt - Date.now() + 1000, 1000)
           const resetDate = new Date(resetAt)
           console.warn(
-            `${operationName} rate limited (${status}). Reset at ${resetDate.toLocaleString()} (in ${Math.ceil(delay / 1000)}s). Waiting...`,
+            `${operationName} rate limited (${status}). Reset at ${resetDate.toLocaleString()} (in ${Math.ceil(delay / 1000)}s). Waiting...`
           )
           await new Promise((resolve) => setTimeout(resolve, delay))
           continue
@@ -43,9 +43,12 @@ export async function withRetry<T>(
       }
 
       if (status === 403) {
-        const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
+        const delay = Math.min(
+          baseDelayMs * Math.pow(2, attempt - 1),
+          maxDelayMs
+        )
         console.warn(
-          `${operationName} returned 403. Waiting ${Math.ceil(delay / 1000)}s before retrying...`,
+          `${operationName} returned 403. Waiting ${Math.ceil(delay / 1000)}s before retrying...`
         )
         await new Promise((resolve) => setTimeout(resolve, delay))
         continue
@@ -53,7 +56,7 @@ export async function withRetry<T>(
 
       const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs)
       console.warn(
-        `${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay / 1000}s...`,
+        `${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay / 1000}s...`
       )
       await new Promise((resolve) => setTimeout(resolve, delay))
     }

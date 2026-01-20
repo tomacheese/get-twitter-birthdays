@@ -33,7 +33,7 @@ async function main(): Promise<void> {
         maxRetries: 3,
         baseDelayMs: 2000,
         operationName: 'Fetch current user',
-      },
+      }
     )
 
     const currentUser = userResponse.data.user
@@ -47,12 +47,12 @@ async function main(): Promise<void> {
       currentUserId,
       credentials.username,
       OUTPUT_PATH,
-      PROGRESS_PATH,
+      PROGRESS_PATH
     )
     saveOutput(OUTPUT_PATH, output)
 
     console.log(
-      `Found ${output.totalWithBirthdate} birthdays out of ${output.totalFollowing} followed users.`,
+      `Found ${output.totalWithBirthdate} birthdays out of ${output.totalFollowing} followed users.`
     )
     console.log(`Saved to ${OUTPUT_PATH}`)
   } catch (error) {

@@ -15,11 +15,12 @@ function ensureResponseLogDir(): string | null {
   const now = new Date()
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
     2,
-    '0',
-  )}${String(now.getDate()).padStart(2, '0')}_${String(
-    now.getHours(),
-  ).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(
-    now.getSeconds(),
+    '0'
+  )}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(
+    2,
+    '0'
+  )}${String(now.getMinutes()).padStart(2, '0')}${String(
+    now.getSeconds()
   ).padStart(2, '0')}`
   responseLogDir = path.join(RESPONSES_DIR, timestamp)
   fs.mkdirSync(responseLogDir, { recursive: true })
@@ -56,8 +57,8 @@ export function writeResponseLog(params: {
           recordedAt: new Date().toISOString(),
         },
         null,
-        2,
-      ),
+        2
+      )
     )
     fs.writeFileSync(bodyPath, params.body)
   } catch (error) {

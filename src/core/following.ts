@@ -31,7 +31,7 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 function normalizeBirthdate(
-  birthdate?: ApiBirthdate | null,
+  birthdate?: ApiBirthdate | null
 ): BirthdateInfo | undefined {
   if (!birthdate) {
     return undefined
@@ -67,7 +67,7 @@ export async function fetchFollowingUsers(
   userId: string,
   sourceUser: string,
   outputPath: string,
-  progressPath: string,
+  progressPath: string
 ): Promise<BirthdaysOutput> {
   const usersById = new Map<string, ResumeUserEntry>()
 
@@ -95,7 +95,7 @@ export async function fetchFollowingUsers(
       usersById.set(user.id, user)
     }
     console.log(
-      `Resuming from progress file. Stage=${stage}, page=${page}, processed=${processedUsers}.`,
+      `Resuming from progress file. Stage=${stage}, page=${page}, processed=${processedUsers}.`
     )
     if (envFlag('FORCE_DETAIL_REFRESH')) {
       stage = 'details'
@@ -122,7 +122,7 @@ export async function fetchFollowingUsers(
 
   const buildProgressState = (
     stageValue: ResumeState['stage'],
-    detailIndex?: number,
+    detailIndex?: number
   ): ResumeState => ({
     sourceUser,
     stage: stageValue,
@@ -137,14 +137,14 @@ export async function fetchFollowingUsers(
 
   const persistProgress = (
     stageValue: ResumeState['stage'],
-    detailIndex?: number,
+    detailIndex?: number
   ): void => {
     saveProgress(progressPath, buildProgressState(stageValue, detailIndex))
   }
 
   const persistState = (
     stageValue: ResumeState['stage'],
-    detailIndex?: number,
+    detailIndex?: number
   ): void => {
     saveOutput(outputPath, buildOutput(usersById, sourceUser))
     persistProgress(stageValue, detailIndex)
@@ -155,7 +155,7 @@ export async function fetchFollowingUsers(
     (maxBirthdateLookup === 0 || birthdateLookupCount < maxBirthdateLookup)
 
   const lookupBirthdate = async (
-    screenName: string,
+    screenName: string
   ): Promise<BirthdateInfo | undefined> => {
     const lookup = await withRetry(
       () =>
@@ -166,17 +166,17 @@ export async function fetchFollowingUsers(
         maxRetries: 2,
         baseDelayMs: 2000,
         operationName: `Lookup birthdate ${screenName}`,
-      },
+      }
     )
     birthdateLookupCount += 1
     return normalizeBirthdate(
-      lookup.data.user?.legacyExtendedProfile?.birthdate,
+      lookup.data.user?.legacyExtendedProfile?.birthdate
     )
   }
 
   const upsertUser = (
     user: ApiUser,
-    requireExisting = false,
+    requireExisting = false
   ): ResumeUserEntry | null => {
     const entry = toResumeUserEntry(user)
     if (!entry) {
@@ -199,7 +199,7 @@ export async function fetchFollowingUsers(
     let emptyPages = 0
     if (maxUsers > 0 && processedUsers >= maxUsers) {
       console.warn(
-        `Already processed ${processedUsers} users (>= MAX_FOLLOWING_USERS=${maxUsers}). Skipping following fetch.`,
+        `Already processed ${processedUsers} users (>= MAX_FOLLOWING_USERS=${maxUsers}). Skipping following fetch.`
       )
       stage = 'details'
     }
@@ -222,7 +222,7 @@ export async function fetchFollowingUsers(
           maxRetries: 3,
           baseDelayMs: 2000,
           operationName: 'Fetch following list',
-        },
+        }
       )
 
       let addedThisPage = 0
@@ -239,15 +239,16 @@ export async function fetchFollowingUsers(
         addedThisPage += 1
         processedUsers += 1
         console.log(
-          `Processed ${processedUsers} users. Birthdays found: ${Array.from(
-            usersById.values(),
-          ).filter((item) => item.birthdate).length}`,
+          `Processed ${processedUsers} users. Birthdays found: ${
+            Array.from(usersById.values()).filter((item) => item.birthdate)
+              .length
+          }`
         )
         persistState('following')
       }
 
       console.log(
-        `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`,
+        `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`
       )
       if (maxUsers > 0 && processedUsers >= maxUsers) {
         console.warn(`Reached MAX_FOLLOWING_USERS=${maxUsers}, stopping.`)
@@ -257,7 +258,7 @@ export async function fetchFollowingUsers(
         emptyPages += 1
         if (emptyPages >= maxEmptyPages) {
           console.warn(
-            `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`,
+            `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`
           )
           break
         }
@@ -300,15 +301,13 @@ export async function fetchFollowingUsers(
       for (; batchIndex < batches.length; batchIndex += 1) {
         const batch = batches[batchIndex]
         console.log(
-          `Fetching user details batch ${batchIndex + 1}/${batches.length} (${batch.length} users)...`,
+          `Fetching user details batch ${batchIndex + 1}/${batches.length} (${batch.length} users)...`
         )
-        let detailResponse:
-          | Awaited<
-              ReturnType<
-                ReturnType<TwitterClient['getUsersApi']>['getUsersByRestIds']
-              >
-            >
-          | null = null
+        let detailResponse: Awaited<
+          ReturnType<
+            ReturnType<TwitterClient['getUsersApi']>['getUsersByRestIds']
+          >
+        > | null = null
         try {
           detailResponse = await withRetry(
             () =>
@@ -320,13 +319,13 @@ export async function fetchFollowingUsers(
               maxRetries: 3,
               baseDelayMs: 2000,
               operationName: 'Fetch user details',
-            },
+            }
           )
         } catch (error) {
           const status = getResponseStatus(error)
           if (status === 403) {
             console.warn(
-              'UsersByRestIds returned 403. Falling back to per-user fetch.',
+              'UsersByRestIds returned 403. Falling back to per-user fetch.'
             )
           } else {
             throw error
@@ -354,7 +353,7 @@ export async function fetchFollowingUsers(
               ? formatBirthdate(entry.birthdate)
               : 'none'
             console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`,
+              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
             )
             persistState('details', batchIndex)
           }
@@ -370,7 +369,7 @@ export async function fetchFollowingUsers(
                 maxRetries: 3,
                 baseDelayMs: 2000,
                 operationName: `Fetch user ${restId}`,
-              },
+              }
             )
             const user = detail.data.user
             if (!user) {
@@ -391,7 +390,7 @@ export async function fetchFollowingUsers(
               ? formatBirthdate(entry.birthdate)
               : 'none'
             console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`,
+              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
             )
             persistState('details', batchIndex)
           }
@@ -403,7 +402,7 @@ export async function fetchFollowingUsers(
       stage,
       missingBirthdateIds
         ? chunkArray(missingBirthdateIds, BATCH_SIZE).length
-        : 0,
+        : 0
     )
   }
 
