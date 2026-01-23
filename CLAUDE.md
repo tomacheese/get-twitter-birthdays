@@ -94,3 +94,4 @@ pnpm install
 6. PR 本文の崩れがないことを確認する。
 
 ## リポジトリ固有
+- 目的: Twitter/X でフォローしているユーザーの誕生日を取得し、`data/birthdays.json` に保存するツールです。
