@@ -94,4 +94,8 @@ pnpm install
 6. PR 本文の崩れがないことを確認する。
 
 ## リポジトリ固有
-- 目的: Twitter/X でフォローしているユーザーの誕生日を取得し、`data/birthdays.json` に保存するツールです。
+- 主要言語: TypeScript
+- パッケージマネージャー: pnpm
+- 主なエントリポイント: `src/main.ts`
+- CI 定義: `.github/workflows/` を参照
+- 実行環境: `Dockerfile` を使用
