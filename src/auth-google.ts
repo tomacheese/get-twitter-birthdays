@@ -3,14 +3,23 @@ import { runGoogleAuth } from './infra/google-auth'
 /**
  * Google OAuth 2.0 認証専用のエントリポイント。
  */
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   try {
     await runGoogleAuth()
-    process.exit(0)
+    return 0
   } catch (error) {
     console.error('❌ 認証処理中にエラーが発生しました:', error)
-    process.exit(1)
+    return 1
   }
 }
 
-main()
+// eslint-disable-next-line no-void
+void main().then(
+  (exitCode) => {
+    process.exitCode = exitCode
+  },
+  (error: unknown) => {
+    console.error('Fatal error occurred', error)
+    process.exitCode = 1
+  }
+)

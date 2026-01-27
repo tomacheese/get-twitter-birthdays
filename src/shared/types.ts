@@ -136,4 +136,4 @@ export interface CalendarEventRecord {
 }
 
 /** カレンダーイベント記録全体の構造を表す（Record型）。 */
-export type CalendarEventsStorage = Record<string, CalendarEventRecord>;
+export type CalendarEventsStorage = Record<string, CalendarEventRecord>

@@ -1,4 +1,13 @@
-import { GaxiosError } from 'gaxios'
+/**
+ * GaxiosError 互換のエラー型を表す。
+ */
+interface GaxiosErrorLike extends Error {
+  code?: string
+  response?: {
+    status?: number
+    headers?: Record<string, string | string[]>
+  }
+}
 
 /**
  * Google API のエラーがリトライ可能かどうかを判定する。
@@ -13,7 +22,7 @@ function isRetryableGoogleError(error: unknown): boolean {
 
   // GaxiosError の場合
   if ('code' in error && typeof error.code === 'string') {
-    const gaxiosError = error as GaxiosError
+    const gaxiosError = error as GaxiosErrorLike
     const status = gaxiosError.response?.status
 
     // レートリミットまたはサーバーエラー
@@ -44,18 +53,22 @@ function isRetryableGoogleError(error: unknown): boolean {
 function getRetryDelay(error: unknown, attempt: number): number {
   // Retry-After ヘッダーを確認
   if (error instanceof Error && 'response' in error) {
-    const gaxiosError = error as GaxiosError
-    const retryAfter = gaxiosError.response?.headers['retry-after']
+    const gaxiosError = error as GaxiosErrorLike
+    const retryAfter = gaxiosError.response?.headers?.['retry-after']
 
     if (retryAfter) {
+      const retryAfterValue = Array.isArray(retryAfter)
+        ? retryAfter[0]
+        : retryAfter
+
       // 秒数で指定されている場合
-      const seconds = Number.parseInt(retryAfter as string, 10)
+      const seconds = Number.parseInt(retryAfterValue, 10)
       if (!Number.isNaN(seconds)) {
         return seconds * 1000
       }
 
       // 日付で指定されている場合
-      const retryDate = new Date(retryAfter as string)
+      const retryDate = new Date(retryAfterValue)
       if (!Number.isNaN(retryDate.getTime())) {
         return Math.max(0, retryDate.getTime() - Date.now())
       }

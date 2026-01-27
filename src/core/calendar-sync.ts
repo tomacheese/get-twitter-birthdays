@@ -1,4 +1,4 @@
-import type { OAuth2Client } from 'google-auth-library'
+import type { Auth } from 'googleapis'
 import type {
   BirthdayEntry,
   BirthdaysOutput,
@@ -12,6 +12,24 @@ import {
 } from '../infra/calendar-client'
 import { loadCalendarEvents, saveCalendarEvents } from '../infra/storage'
 import { SYNC_CALENDAR_RECONCILE } from '../shared/config'
+
+type OAuth2Client = Auth.OAuth2Client
+
+/**
+ * イベント記録からユーザーを削除した新しいオブジェクトを返す。
+ *
+ * @param events イベント記録
+ * @param userId 削除するユーザー ID
+ * @returns 新しいイベント記録
+ */
+function removeEventByUserId(
+  events: CalendarEventsStorage,
+  userId: string
+): CalendarEventsStorage {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [userId]: _removed, ...rest } = events
+  return rest
+}
 
 /**
  * イベント記録が変更されたかどうかを判定する。
@@ -46,7 +64,7 @@ export async function syncToGoogleCalendar(
 ): Promise<void> {
   console.log('📅 Google Calendar への同期を開始します...')
 
-  const events = loadCalendarEvents()
+  let events = loadCalendarEvents()
   const currentUserIds = new Set(birthdaysOutput.birthdays.map((b) => b.id))
   let created = 0
   let updated = 0
@@ -57,6 +75,7 @@ export async function syncToGoogleCalendar(
   for (const entry of birthdaysOutput.birthdays) {
     const existingEvent = events[entry.id]
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!existingEvent) {
       // 新規作成
       try {
@@ -135,7 +154,7 @@ export async function syncToGoogleCalendar(
       const record = events[userId]
       try {
         await deleteCalendarEvent(oauth2Client, record.eventId)
-        delete events[userId]
+        events = removeEventByUserId(events, userId)
         console.log(`  🗑️  削除: ${record.name}(@${record.screenName})`)
         deleted++
       } catch (error) {
