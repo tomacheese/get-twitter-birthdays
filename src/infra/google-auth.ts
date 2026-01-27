@@ -16,6 +16,21 @@ const REDIRECT_URI = 'http://localhost:3000/callback'
 const AUTH_TIMEOUT_MS = 5 * 60 * 1000 // 5 分
 
 /**
+ * HTML エスケープを行う。
+ *
+ * @param text エスケープする文字列
+ * @returns エスケープされた文字列
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#x27;')
+}
+
+/**
  * Google OAuth 2.0 クライアントを作成する。
  *
  * @param credentials Google 認証情報
@@ -91,12 +106,10 @@ async function performLoopbackAuth(
           reject(error instanceof Error ? error : new Error(String(error)))
         }
       } else if (queryData.error) {
-        response.end(`認証エラー: ${queryData.error}`)
+        response.end(`認証エラー: ${escapeHtml(queryData.error)}`)
         cleanup()
         server.close()
-        reject(
-          new Error(`❌ 認証エラー: ${String(queryData.error as unknown)}`)
-        )
+        reject(new Error(`❌ 認証エラー: ${queryData.error}`))
       } else {
         response.end('Invalid callback')
       }
@@ -110,11 +123,13 @@ async function performLoopbackAuth(
 
     server.on('error', (error) => {
       cleanup()
+      server.close()
       reject(error)
     })
 
     // タイムアウト設定
     timeoutId = setTimeout(() => {
+      cleanup()
       server.close()
       reject(
         new Error(

@@ -10,12 +10,6 @@ type CalendarEvent = calendar_v3.Schema$Event
 type OAuth2Client = Auth.OAuth2Client
 
 /**
- * 誕生日情報から日付文字列を生成する（年不明の場合は現在年を使用）。
- *
- * @param birthdate 誕生日情報
- * @returns YYYY-MM-DD 形式の日付文字列
- */
-/**
  * 日付を YYYY-MM-DD 形式の文字列に変換する。
  *
  * @param date Date オブジェクト
@@ -174,6 +168,10 @@ export async function deleteCalendarEvent(
 
 /**
  * カレンダーから特定の extendedProperties を持つイベントを検索する。
+ *
+ * 注: この関数は現在使用されていませんが、将来的にローカルストレージが失われた場合や
+ * 手動でのリカバリー操作を行う際に、Google Calendar から既存のイベントを検索するために
+ * 使用される可能性があります。
  *
  * @param oauth2Client 認証済みの OAuth2Client
  * @param userId Twitter ユーザー ID
