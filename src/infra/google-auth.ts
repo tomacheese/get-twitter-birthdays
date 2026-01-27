@@ -170,17 +170,106 @@ export async function authenticateGoogle(): Promise<OAuth2Client> {
 }
 
 /**
+ * カレンダー一覧を取得し、ユーザーに選択させる。
+ *
+ * @param oauth2Client 認証済みの OAuth2Client
+ * @returns 選択されたカレンダー ID
+ */
+async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+
+  console.log()
+  console.log('📅 カレンダー一覧を取得しています...')
+
+  const response = await withGoogleRetry(async () => {
+    return await calendar.calendarList.list()
+  })
+
+  const calendars = response.data.items ?? []
+  if (calendars.length === 0) {
+    throw new Error('❌ カレンダーが見つかりませんでした')
+  }
+
+  console.log()
+  console.log('📋 利用可能なカレンダー:')
+  for (const [index, cal] of calendars.entries()) {
+    const isPrimary = cal.primary ? ' (プライマリ)' : ''
+    console.log(`  ${index + 1}. ${cal.summary ?? 'Untitled'}${isPrimary}`)
+  }
+
+  console.log()
+
+  // プライマリカレンダーを探す
+  const primaryCalendar = calendars.find((cal) => cal.primary)
+  const defaultIndex = primaryCalendar ? calendars.indexOf(primaryCalendar) : 0
+
+  // ユーザー入力を待つ
+  const readline = await import('node:readline/promises')
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  try {
+    const answer = await rl.question(
+      `カレンダーを選択してください (1-${calendars.length}, デフォルト: ${defaultIndex + 1}): `
+    )
+    const selectedIndex =
+      answer.trim() === '' ? defaultIndex : Number(answer) - 1
+
+    if (
+      Number.isNaN(selectedIndex) ||
+      selectedIndex < 0 ||
+      selectedIndex >= calendars.length
+    ) {
+      throw new Error('❌ 無効な選択です')
+    }
+
+    const selectedCalendar = calendars[selectedIndex]
+    if (!selectedCalendar.id) {
+      throw new Error('❌ カレンダー ID が取得できませんでした')
+    }
+
+    console.log()
+    console.log(
+      `✅ 選択されたカレンダー: ${selectedCalendar.summary ?? 'Untitled'}`
+    )
+    console.log(`   カレンダー ID: ${selectedCalendar.id}`)
+
+    return selectedCalendar.id
+  } finally {
+    rl.close()
+  }
+}
+
+/**
  * 認証専用のエントリポイント。
  * トークンキャッシュがあれば使用し、なければループバック認証を実行する。
+ * 認証後、カレンダーを選択して環境変数として設定する方法を表示する。
  */
 export async function runGoogleAuth(): Promise<void> {
   console.log('🔐 Google OAuth 2.0 認証を開始します...')
   console.log()
 
   try {
-    await authenticateGoogle()
+    const oauth2Client = await authenticateGoogle()
     console.log()
     console.log('✅ 認証が完了しました！')
+
+    // カレンダーを選択
+    const calendarId = await selectCalendar(oauth2Client)
+
+    console.log()
+    console.log(
+      '💡 カレンダーを使用するには、以下の環境変数を設定してください:'
+    )
+    console.log()
+    console.log(`  export GOOGLE_CALENDAR_ID="${calendarId}"`)
+    console.log()
+    console.log('または、`.env` ファイルに以下を追加してください:')
+    console.log()
+    console.log(`  GOOGLE_CALENDAR_ID="${calendarId}"`)
+    console.log()
   } catch (error) {
     console.error('❌ 認証に失敗しました:', error)
     throw error
