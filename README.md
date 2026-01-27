@@ -89,6 +89,60 @@ docker run --rm \\
 }
 ```
 
+## Google Calendar 統合（オプション）
+
+取得した誕生日情報を Google Calendar に年次繰り返しイベントとして自動登録できます。
+
+### セットアップ手順
+
+#### 1. Google Cloud Console で OAuth 2.0 クライアント ID を作成
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成
+2. Google Calendar API を有効化
+3. OAuth 2.0 クライアント ID を作成（デスクトップアプリ）
+4. リダイレクト URI に `http://localhost:3000/callback` を設定
+5. 認証情報を `data/google-credentials.json` に保存
+
+#### 2. Google OAuth 2.0 認証を実行
+
+```bash
+pnpm auth:google
+```
+
+ブラウザで認証 URL にアクセスし、認証を完了してください。トークンは `data/google-tokens.json` にキャッシュされます。
+
+#### 3. 実行
+
+```bash
+pnpm start
+```
+
+`data/google-credentials.json` が存在する場合、自動的に Google Calendar への同期が実行されます。
+
+### Docker で使用する場合
+
+認証時にポートマッピングが必要です。
+
+```bash
+# 認証
+docker run -it --rm -p 3000:3000 -v "${PWD}/data:/data" get-twitter-birthdays pnpm auth:google
+
+# 実行（自動でカレンダー同期）
+docker run --rm -v "${PWD}/data:/data" get-twitter-birthdays
+```
+
+### イベント形式
+
+- **タイトル**: `名前(@screenname)の誕生日`（例: "田中太郎(@taro)の誕生日"）
+- **終日イベント**: 当日のみ
+- **年次繰り返し**: `RRULE:FREQ=YEARLY`
+- **説明**: Twitter プロフィール URL
+- **年不明の誕生日**: 現在年を使用
+
+### 変更検出と更新
+
+名前、スクリーンネーム、誕生日、URL の変更を自動検出してイベントを更新します。重複作成はされません。
+
 ## 環境変数
 
 ### 必須
@@ -107,6 +161,15 @@ docker run --rm \\
 - `BIRTHDAYS_PROGRESS_PATH` (既定: `./data/birthdays-progress.json`)
 - `RESPONSES_DIR` (既定: `./data/responses`)
 - `RESPONSES_LOG_ENABLED=1` (設定した場合のみレスポンスログを保存)
+
+### Google Calendar 関連
+
+- `GOOGLE_CREDENTIALS_PATH` (既定: `./data/google-credentials.json`)
+- `GOOGLE_TOKEN_CACHE_PATH` (既定: `./data/google-tokens.json`)
+- `CALENDAR_EVENTS_PATH` (既定: `./data/calendar-events.json`)
+- `GOOGLE_CALENDAR_ID` (既定: `primary`)
+- `SYNC_CALENDAR_STRICT=1` (同期失敗時に終了コード 1)
+- `SYNC_CALENDAR_RECONCILE=1` (削除されたユーザーのイベントも削除)
 
 ### 取得を調整するオプション
 
