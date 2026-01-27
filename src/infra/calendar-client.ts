@@ -10,21 +10,9 @@ type CalendarEvent = calendar_v3.Schema$Event
 type OAuth2Client = Auth.OAuth2Client
 
 /**
- * 日付を YYYY-MM-DD 形式の文字列に変換する。
- *
- * @param date Date オブジェクト
- * @returns YYYY-MM-DD 形式の日付文字列
- */
-function formatDateToString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-/**
  * 誕生日情報から開始日と終了日を生成する（年不明の場合は現在年を使用）。
  * Google Calendar API の終日イベントでは、end.date は排他的（翌日）を指定する。
+ * タイムゾーンの影響を避けるため、Date オブジェクトを経由せずに直接文字列を生成する。
  *
  * @param birthdate 誕生日情報
  * @returns 開始日と終了日の YYYY-MM-DD 形式の文字列
@@ -34,13 +22,34 @@ function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
   endDate: string
 } {
   const year = birthdate.year ?? new Date().getFullYear()
-  const startDate = new Date(year, birthdate.month - 1, birthdate.day)
-  const endDate = new Date(startDate)
-  endDate.setDate(endDate.getDate() + 1)
+  const month = String(birthdate.month).padStart(2, '0')
+  const day = String(birthdate.day).padStart(2, '0')
+
+  const startDate = `${year}-${month}-${day}`
+
+  // 終了日は翌日（月をまたぐ場合や年をまたぐ場合を考慮）
+  let endYear = year
+  let endMonth = birthdate.month
+  let endDay = birthdate.day + 1
+
+  // 月の最終日を超える場合
+  const daysInMonth = new Date(year, birthdate.month, 0).getDate()
+  if (endDay > daysInMonth) {
+    endDay = 1
+    endMonth++
+
+    // 12月31日の場合は翌年1月1日
+    if (endMonth > 12) {
+      endMonth = 1
+      endYear++
+    }
+  }
+
+  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
   return {
-    startDate: formatDateToString(startDate),
-    endDate: formatDateToString(endDate),
+    startDate,
+    endDate,
   }
 }
 
