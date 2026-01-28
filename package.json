@@ -54,6 +54,7 @@
     "type": "git"
   },
   "scripts": {
+    "auth:google": "tsx ./src/auth-google.ts",
     "dev": "tsx watch ./src/main.ts",
     "fix": "run-z fix:prettier fix:eslint",
     "fix:eslint": "eslint . -c eslint.config.mjs --fix",
@@ -69,6 +70,7 @@
   "dependencies": {
     "@the-convocation/twitter-scraper": "^0.21.1",
     "cycletls": "^2.0.5",
+    "googleapis": "^144.0.0",
     "headers-polyfill": "^4.0.3",
     "twitter-openapi-typescript": "^0.0.55"
   }

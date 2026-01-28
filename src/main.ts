@@ -1,10 +1,18 @@
 import { TwitterOpenApi } from 'twitter-openapi-typescript'
-import { OUTPUT_PATH, PROGRESS_PATH } from './shared/config'
+import fs from 'node:fs'
+import {
+  GOOGLE_CREDENTIALS_PATH,
+  OUTPUT_PATH,
+  PROGRESS_PATH,
+  SYNC_CALENDAR_STRICT,
+} from './shared/config'
 import { getAuthCookies, resolveCredentials } from './infra/auth'
 import { cleanupCycleTLS, cycleTLSFetchWithProxy } from './infra/cycletls'
 import { loadConfig, saveOutput } from './infra/storage'
 import { fetchFollowingUsers } from './core/following'
 import { withRetry } from './shared/retry'
+import { authenticateGoogle } from './infra/google-auth'
+import { syncToGoogleCalendar } from './core/calendar-sync'
 
 /**
  * CLIのエントリポイント。
@@ -57,6 +65,20 @@ async function main(): Promise<number> {
       `Found ${output.totalWithBirthdate} birthdays out of ${output.totalFollowing} followed users.`
     )
     console.log(`Saved to ${OUTPUT_PATH}`)
+
+    // Google Calendar 同期（認証情報があれば自動実行）
+    if (fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
+      try {
+        console.log()
+        const oauth2Client = await authenticateGoogle()
+        await syncToGoogleCalendar(oauth2Client, output)
+      } catch (error) {
+        console.error('❌ Google Calendar 同期中にエラーが発生しました:', error)
+        if (SYNC_CALENDAR_STRICT) {
+          exitCode = 1
+        }
+      }
+    }
   } catch (error) {
     console.error('Fatal error occurred', error)
     exitCode = 1

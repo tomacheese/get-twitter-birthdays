@@ -101,3 +101,39 @@ export interface HeadersLike {
   entries?: () => IterableIterator<[string, string]>
   [Symbol.iterator]?: () => Iterator<[string, string]>
 }
+
+/** Google OAuth 2.0 認証情報の構造を表す。 */
+export interface GoogleCredentials {
+  installed: {
+    client_id: string
+    project_id: string
+    auth_uri: string
+    token_uri: string
+    auth_provider_x509_cert_url: string
+    client_secret: string
+    redirect_uris: string[]
+  }
+}
+
+/** Google OAuth 2.0 トークンの構造を表す。 */
+export interface GoogleTokens {
+  access_token: string
+  refresh_token?: string
+  scope: string
+  token_type: string
+  expiry_date?: number
+}
+
+/** カレンダーイベント記録の1件分の構造を表す。 */
+export interface CalendarEventRecord {
+  eventId: string
+  userId: string
+  name: string
+  screenName: string
+  birthdate: BirthdateInfo
+  profileUrl: string
+  updatedAt: string
+}
+
+/** カレンダーイベント記録全体の構造を表す（Record型）。 */
+export type CalendarEventsStorage = Record<string, CalendarEventRecord>

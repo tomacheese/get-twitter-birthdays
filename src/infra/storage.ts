@@ -1,14 +1,20 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  CALENDAR_EVENTS_PATH,
   CONFIG_PATH,
   COOKIE_CACHE_FILE,
   COOKIE_EXPIRY_DAYS,
+  GOOGLE_CREDENTIALS_PATH,
+  GOOGLE_TOKEN_CACHE_PATH,
 } from '../shared/config'
 import type {
   BirthdaysOutput,
   CachedCookies,
+  CalendarEventsStorage,
   Config,
+  GoogleCredentials,
+  GoogleTokens,
   ResumeState,
 } from '../shared/types'
 
@@ -131,4 +137,73 @@ export function saveCookies(authToken: string, ct0: string): void {
     savedAt: Date.now(),
   }
   fs.writeFileSync(COOKIE_CACHE_FILE, JSON.stringify(data, null, 2))
+}
+
+/**
+ * Google 認証情報ファイルを読み込む。
+ * @returns Google 認証情報
+ */
+export function loadGoogleCredentials(): GoogleCredentials | null {
+  if (!fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
+    return null
+  }
+  try {
+    const raw = fs.readFileSync(GOOGLE_CREDENTIALS_PATH, 'utf8')
+    return JSON.parse(raw) as GoogleCredentials
+  } catch (error) {
+    console.warn('⚠️ Google 認証情報ファイルの読み込みに失敗しました', error)
+    return null
+  }
+}
+
+/**
+ * Google トークンキャッシュを読み込む。
+ * @returns Google トークン
+ */
+export function loadGoogleTokens(): GoogleTokens | null {
+  if (!fs.existsSync(GOOGLE_TOKEN_CACHE_PATH)) {
+    return null
+  }
+  try {
+    const raw = fs.readFileSync(GOOGLE_TOKEN_CACHE_PATH, 'utf8')
+    return JSON.parse(raw) as GoogleTokens
+  } catch (error) {
+    console.warn('⚠️ Google トークンキャッシュの読み込みに失敗しました', error)
+    return null
+  }
+}
+
+/**
+ * Google トークンを保存する。
+ * @param tokens Google トークン
+ */
+export function saveGoogleTokens(tokens: GoogleTokens): void {
+  ensureOutputDir(GOOGLE_TOKEN_CACHE_PATH)
+  fs.writeFileSync(GOOGLE_TOKEN_CACHE_PATH, JSON.stringify(tokens, null, 2))
+}
+
+/**
+ * カレンダーイベント記録を読み込む。
+ * @returns カレンダーイベント記録
+ */
+export function loadCalendarEvents(): CalendarEventsStorage {
+  if (!fs.existsSync(CALENDAR_EVENTS_PATH)) {
+    return {}
+  }
+  try {
+    const raw = fs.readFileSync(CALENDAR_EVENTS_PATH, 'utf8')
+    return JSON.parse(raw) as CalendarEventsStorage
+  } catch (error) {
+    console.warn('⚠️ カレンダーイベント記録の読み込みに失敗しました', error)
+    return {}
+  }
+}
+
+/**
+ * カレンダーイベント記録を保存する。
+ * @param events カレンダーイベント記録
+ */
+export function saveCalendarEvents(events: CalendarEventsStorage): void {
+  ensureOutputDir(CALENDAR_EVENTS_PATH)
+  fs.writeFileSync(CALENDAR_EVENTS_PATH, JSON.stringify(events, null, 2))
 }
