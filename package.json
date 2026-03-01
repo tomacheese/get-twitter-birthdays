@@ -10,7 +10,7 @@
     "@book000/eslint-config": "1.12.38",
     "@types/jest": "30.0.0",
     "@types/node": "25.0.9",
-    "@types/tough-cookie": "^4.0.5",
+    "@types/tough-cookie": "4.0.5",
     "eslint": "9.39.2",
     "eslint-config-standard": "17.1.0",
     "eslint-plugin-import": "2.32.0",
@@ -68,10 +68,10 @@
     "test": "jest --runInBand --passWithNoTests --detectOpenHandles --forceExit --coverage"
   },
   "dependencies": {
-    "@the-convocation/twitter-scraper": "^0.21.1",
-    "cycletls": "^2.0.5",
-    "googleapis": "^144.0.0",
-    "headers-polyfill": "^4.0.3",
-    "twitter-openapi-typescript": "^0.0.55"
+    "@the-convocation/twitter-scraper": "0.21.1",
+    "cycletls": "2.0.5",
+    "googleapis": "144.0.0",
+    "headers-polyfill": "4.0.3",
+    "twitter-openapi-typescript": "0.0.55"
   }
 }
