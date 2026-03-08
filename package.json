@@ -71,7 +71,7 @@
     "@the-convocation/twitter-scraper": "0.22.1",
     "cycletls": "2.0.5",
     "googleapis": "171.4.0",
-    "headers-polyfill": "4.0.3",
+    "headers-polyfill": "5.0.1",
     "twitter-openapi-typescript": "0.0.55"
   }
 }
