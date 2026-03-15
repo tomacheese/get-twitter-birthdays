@@ -7,7 +7,7 @@
     "url": "https://github.com/tomacheese/get-twitter-birthdays/issues"
   },
   "devDependencies": {
-    "@book000/eslint-config": "1.13.18",
+    "@book000/eslint-config": "1.13.19",
     "@types/jest": "30.0.0",
     "@types/node": "25.4.0",
     "@types/tough-cookie": "4.0.5",
