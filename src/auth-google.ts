@@ -7,8 +7,8 @@ async function main(): Promise<number> {
   try {
     await runGoogleAuth()
     return 0
-  } catch (error) {
-    console.error('❌ 認証処理中にエラーが発生しました:', error)
+  } catch (err) {
+    console.error('❌ 認証処理中にエラーが発生しました:', err)
     return 1
   }
 }
@@ -18,8 +18,8 @@ void main().then(
   (exitCode) => {
     process.exitCode = exitCode
   },
-  (error: unknown) => {
-    console.error('Fatal error occurred', error)
+  (err: unknown) => {
+    console.error('Fatal error occurred', err)
     process.exitCode = 1
   }
 )

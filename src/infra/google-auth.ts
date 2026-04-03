@@ -102,8 +102,8 @@ async function performLoopbackAuth(
           }
 
           resolve(tokens as GoogleTokens)
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)))
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err)))
         }
       } else if (queryData.error) {
         response.end(`認証エラー: ${escapeHtml(queryData.error)}`)
@@ -285,8 +285,8 @@ export async function runGoogleAuth(): Promise<void> {
     console.log()
     console.log(`  GOOGLE_CALENDAR_ID="${calendarId}"`)
     console.log()
-  } catch (error) {
-    console.error('❌ 認証に失敗しました:', error)
-    throw error
+  } catch (err) {
+    console.error('❌ 認証に失敗しました:', err)
+    throw err
   }
 }

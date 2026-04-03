@@ -95,19 +95,19 @@ export async function withGoogleRetry<T>(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn()
-    } catch (error) {
-      lastError = error
+    } catch (err) {
+      lastError = err
 
       // 最終試行またはリトライ不可能なエラーの場合は例外をスロー
-      if (attempt === maxRetries || !isRetryableGoogleError(error)) {
-        throw error
+      if (attempt === maxRetries || !isRetryableGoogleError(err)) {
+        throw err
       }
 
       // 待機してリトライ
-      const delay = getRetryDelay(error, attempt)
+      const delay = getRetryDelay(err, attempt)
       console.warn(
         `🔄 Google API エラー (試行 ${attempt + 1}/${maxRetries + 1}): ${
-          error instanceof Error ? error.message : String(error)
+          err instanceof Error ? err.message : String(err)
         }. ${delay}ms 後にリトライします...`
       )
       await new Promise((resolve) => setTimeout(resolve, delay))

@@ -72,15 +72,15 @@ async function main(): Promise<number> {
         console.log()
         const oauth2Client = await authenticateGoogle()
         await syncToGoogleCalendar(oauth2Client, output)
-      } catch (error) {
-        console.error('❌ Google Calendar 同期中にエラーが発生しました:', error)
+      } catch (err) {
+        console.error('❌ Google Calendar 同期中にエラーが発生しました:', err)
         if (SYNC_CALENDAR_STRICT) {
           exitCode = 1
         }
       }
     }
-  } catch (error) {
-    console.error('Fatal error occurred', error)
+  } catch (err) {
+    console.error('Fatal error occurred', err)
     exitCode = 1
   } finally {
     await cleanupCycleTLS()
@@ -93,8 +93,8 @@ main().then(
   (exitCode) => {
     process.exitCode = exitCode
   },
-  (error: unknown) => {
-    console.error('Fatal error occurred', error)
+  (err: unknown) => {
+    console.error('Fatal error occurred', err)
     process.exitCode = 1
   }
 )

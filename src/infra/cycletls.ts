@@ -88,9 +88,9 @@ export async function cycleTLSFetchWithProxy(
         proxyUrl.username = proxyUsername
         proxyUrl.password = proxyPassword
         proxy = proxyUrl.toString()
-      } catch (error) {
-        console.warn('Failed to parse PROXY_SERVER URL', error)
-        const message = error instanceof Error ? error.message : String(error)
+      } catch (err) {
+        console.warn('Failed to parse PROXY_SERVER URL', err)
+        const message = err instanceof Error ? err.message : String(err)
         throw new Error(
           `Invalid PROXY_SERVER URL: ${proxyServer}. Expected format: host:port, http://host:port or https://host:port. (${message})`
         )
@@ -169,15 +169,15 @@ export async function cleanupCycleTLS(): Promise<void> {
     try {
       const instance = await cycleTLSInstancePromise
       await instance.exit()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
       console.warn(`CycleTLS instance exit failed: ${message}`)
     }
   }
   try {
     cycleTLSExit()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
     console.debug(
       `twitter-scraper CycleTLS exit error (may not be initialized): ${message}`
     )

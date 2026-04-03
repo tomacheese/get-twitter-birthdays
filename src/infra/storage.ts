@@ -61,8 +61,8 @@ export function loadProgress(progressPath: string): ResumeState | null {
   try {
     const raw = fs.readFileSync(progressPath, 'utf8')
     return JSON.parse(raw) as ResumeState
-  } catch (error) {
-    console.warn('Failed to load progress file', error)
+  } catch (err) {
+    console.warn('Failed to load progress file', err)
     return null
   }
 }
@@ -115,8 +115,8 @@ export function loadCachedCookies(): CachedCookies | null {
       return null
     }
     return data
-  } catch (error) {
-    console.warn('Failed to load cached cookies', error)
+  } catch (err) {
+    console.warn('Failed to load cached cookies', err)
     return null
   }
 }
@@ -150,8 +150,8 @@ export function loadGoogleCredentials(): GoogleCredentials | null {
   try {
     const raw = fs.readFileSync(GOOGLE_CREDENTIALS_PATH, 'utf8')
     return JSON.parse(raw) as GoogleCredentials
-  } catch (error) {
-    console.warn('⚠️ Google 認証情報ファイルの読み込みに失敗しました', error)
+  } catch (err) {
+    console.warn('⚠️ Google 認証情報ファイルの読み込みに失敗しました', err)
     return null
   }
 }
@@ -167,8 +167,8 @@ export function loadGoogleTokens(): GoogleTokens | null {
   try {
     const raw = fs.readFileSync(GOOGLE_TOKEN_CACHE_PATH, 'utf8')
     return JSON.parse(raw) as GoogleTokens
-  } catch (error) {
-    console.warn('⚠️ Google トークンキャッシュの読み込みに失敗しました', error)
+  } catch (err) {
+    console.warn('⚠️ Google トークンキャッシュの読み込みに失敗しました', err)
     return null
   }
 }
@@ -193,8 +193,8 @@ export function loadCalendarEvents(): CalendarEventsStorage {
   try {
     const raw = fs.readFileSync(CALENDAR_EVENTS_PATH, 'utf8')
     return JSON.parse(raw) as CalendarEventsStorage
-  } catch (error) {
-    console.warn('⚠️ カレンダーイベント記録の読み込みに失敗しました', error)
+  } catch (err) {
+    console.warn('⚠️ カレンダーイベント記録の読み込みに失敗しました', err)
     return {}
   }
 }

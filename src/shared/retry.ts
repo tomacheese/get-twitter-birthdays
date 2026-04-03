@@ -23,8 +23,8 @@ export async function withRetry<T>(
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       return await fn()
-    } catch (error: unknown) {
-      const response = (error as { response?: Response }).response
+    } catch (err: unknown) {
+      const response = (err as { response?: Response }).response
       const status = response?.status
       if (status === 429 || status === 403) {
         const resetHeader = response?.headers.get('x-rate-limit-reset')
@@ -42,7 +42,7 @@ export async function withRetry<T>(
       }
 
       if (attempt >= maxRetries) {
-        throw error
+        throw err
       }
 
       if (status === 403) {

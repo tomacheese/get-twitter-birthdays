@@ -108,14 +108,11 @@ export async function syncToGoogleCalendar(
 
         console.log(`  ✅ 作成: ${entry.name}(@${entry.screenName})`)
         created++
-      } catch (error) {
-        console.error(
-          `  ❌ 作成失敗: ${entry.name}(@${entry.screenName})`,
-          error
-        )
+      } catch (err) {
+        console.error(`  ❌ 作成失敗: ${entry.name}(@${entry.screenName})`, err)
         errors.push({
           user: `${entry.name}(@${entry.screenName})`,
-          error,
+          error: err,
         })
         // エラーを記録して次のユーザーの処理を継続
       }
@@ -146,14 +143,11 @@ export async function syncToGoogleCalendar(
 
         console.log(`  🔄 更新: ${entry.name}(@${entry.screenName})`)
         updated++
-      } catch (error) {
-        console.error(
-          `  ❌ 更新失敗: ${entry.name}(@${entry.screenName})`,
-          error
-        )
+      } catch (err) {
+        console.error(`  ❌ 更新失敗: ${entry.name}(@${entry.screenName})`, err)
         errors.push({
           user: `${entry.name}(@${entry.screenName})`,
-          error,
+          error: err,
         })
         // エラーを記録して次のユーザーの処理を継続
       }
@@ -180,14 +174,14 @@ export async function syncToGoogleCalendar(
 
         console.log(`  🗑️  削除: ${record.name}(@${record.screenName})`)
         deleted++
-      } catch (error) {
+      } catch (err) {
         console.error(
           `  ❌ 削除失敗: ${record.name}(@${record.screenName})`,
-          error
+          err
         )
         errors.push({
           user: `${record.name}(@${record.screenName})`,
-          error,
+          error: err,
         })
         // 削除失敗は続行
       }

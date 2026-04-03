@@ -376,14 +376,14 @@ export async function fetchFollowingUsers(
               operationName: 'Fetch user details',
             }
           )
-        } catch (error) {
-          const status = getResponseStatus(error)
+        } catch (err) {
+          const status = getResponseStatus(err)
           if (status === 403) {
             console.warn(
               'UsersByRestIds returned 403. Falling back to per-user fetch.'
             )
           } else {
-            throw error
+            throw err
           }
         }
 
