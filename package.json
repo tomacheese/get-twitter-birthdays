@@ -68,7 +68,7 @@
     "test": "jest --runInBand --passWithNoTests --detectOpenHandles --forceExit --coverage"
   },
   "dependencies": {
-    "@the-convocation/twitter-scraper": "0.22.2",
+    "@the-convocation/twitter-scraper": "0.22.3",
     "cycletls": "2.0.5",
     "googleapis": "171.4.0",
     "headers-polyfill": "5.0.1",
