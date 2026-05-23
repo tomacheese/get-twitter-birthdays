@@ -70,7 +70,7 @@
   "dependencies": {
     "@the-convocation/twitter-scraper": "0.22.3",
     "cycletls": "2.0.5",
-    "googleapis": "171.4.0",
+    "googleapis": "172.0.0",
     "headers-polyfill": "5.0.1",
     "twitter-openapi-typescript": "0.0.55"
   }
