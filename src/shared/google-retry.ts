@@ -32,9 +32,7 @@ function isRetryableGoogleError(error: unknown): boolean {
 
     // ネットワークエラー
     if (
-      gaxiosError.code === 'ECONNRESET' ||
-      gaxiosError.code === 'ETIMEDOUT' ||
-      gaxiosError.code === 'ENOTFOUND'
+      ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(gaxiosError.code ?? '')
     ) {
       return true
     }
