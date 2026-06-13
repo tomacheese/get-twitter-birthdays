@@ -22,7 +22,8 @@ function isRetryableGoogleError(error: unknown): boolean {
 
   // GaxiosError の場合
   if ('code' in error && typeof error.code === 'string') {
-    const gaxiosError = error as GaxiosErrorLike
+    // typeof error.code === 'string' で絞り込み済みのため code を string として扱う
+    const gaxiosError = error as GaxiosErrorLike & { code: string }
     const status = gaxiosError.response?.status
 
     // レートリミットまたはサーバーエラー
@@ -31,11 +32,7 @@ function isRetryableGoogleError(error: unknown): boolean {
     }
 
     // ネットワークエラー
-    if (
-      gaxiosError.code === 'ECONNRESET' ||
-      gaxiosError.code === 'ETIMEDOUT' ||
-      gaxiosError.code === 'ENOTFOUND'
-    ) {
+    if (['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(gaxiosError.code)) {
       return true
     }
   }
