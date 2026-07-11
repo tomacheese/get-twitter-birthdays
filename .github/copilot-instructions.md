@@ -1,60 +1,27 @@
-# GitHub Copilot Instructions
+# GitHub Copilot コードレビュー指示
 
-## プロジェクト概要
-- 目的: Twitter/X でフォローしているユーザーの誕生日を取得し、JSON に保存する
-- 主な機能: フォロー一覧取得、誕生日抽出、進捗保存、Docker 実行サポート
-- 対象ユーザー: 開発者、Twitter ユーザー
+このリポジトリは Twitter/X のフォローユーザーの誕生日を取得し、`data/birthdays.json` への保存および Google Calendar への同期を行う TypeScript / Node.js (pnpm) 製 CLI ツールです。プルリクエストのレビューでは以下を重点的に確認してください。
 
-## 共通ルール
-- 会話は日本語で行う。
-- PR とコミットは Conventional Commits に従う。
-- 日本語と英数字の間には半角スペースを入れる。
-- エラーメッセージは英語で記載する。
+## 強制されている規約(違反はフラグする)
 
-## 技術スタック
-- 言語: TypeScript
-- ランタイム: Node.js (v24.11.1)
-- パッケージマネージャー: pnpm
-- 主要ライブラリ: twitter-openapi-typescript, @the-convocation/twitter-scraper, cycletls
+- Prettier / ESLint(`@book000/eslint-config` + standard 準拠)。`pnpm lint` は `tsc` の型チェックまで含むため、型エラーが残る変更は不可。
+- `tsconfig.json` の `skipLibCheck` を有効化しない。
+- `any` 型の新規追加は避け、`src/shared/types.ts` の型を利用・拡張する。
+- 公開関数・インターフェースには日本語の JSDoc を付ける。
+- エラーメッセージは英語。日本語と英数字の間には半角スペースを入れる。
+- コミット / PR タイトルは Conventional Commits(`feat:`, `fix:`, `chore:` など)。
 
-## コーディング規約
-- フォーマット: Prettier
-- Lint: ESLint (Standard)
-- 関数・インターフェースには日本語で JSDoc を記載する。
-- TypeScript の `skipLibCheck` は使用しない。
+## レビュー時の重点確認事項
 
-## 開発コマンド
-```bash
-# 依存関係のインストール
-pnpm install
+- **機密情報**: `data/config.json`・`.env`・`data/google-credentials.json`・`data/google-tokens.json` の認証情報がコミットに含まれていないか。ログや出力に個人情報が混入していないか(特に `RESPONSES_LOG_ENABLED=1` 時の `data/responses` 保存)。
+- **エラーハンドリング**: レートリミット (429) は `x-rate-limit-reset` を見て待機する既存挙動を壊していないか。外部 API 呼び出しは `src/shared/retry.ts` / `google-retry.ts` のリトライを適切に使っているか。
+- **ファイル I/O**: 直接 `fs` を触らず `src/infra/storage.ts` を経由しているか。
+- **リジューム整合性**: 進捗ファイル(`birthdays-progress.json` など)の読み書き変更が途中再開を壊していないか。
+- **環境変数**: 変数を増減した場合、`src/shared/config.ts` と `README.md`「環境変数」節の双方が更新されているか。
 
-# 開発 (watch モード)
-pnpm dev
+## フラグすべきでない既知パターン(誤検知回避)
 
-# 実行
-pnpm start
-
-# テスト
-pnpm test
-
-# Lint
-pnpm lint
-
-# 自動修正 (Format + Lint fix)
-pnpm fix
-```
-
-## テスト方針
-- テストフレームワーク: Jest
-- テストファイル: `**/*.test.ts`
-
-## セキュリティ / 機密情報
-- `data/config.json` や環境変数 (`.env`) に含まれる認証情報 (Twitter パスワードなど) はコミットしない。
-- ログ (`RESPONSES_LOG_ENABLED=1` 時など) に機密情報が出力される可能性があるため注意する。
-
-## ドキュメント更新
-- `README.md` (仕様変更時)
-
-## リポジトリ固有
-- Docker での実行もサポートしている (`docker build -t get-twitter-birthdays .`)。
-- データは `data/` ディレクトリに保存される。
+- `data/` が `.gitignore` されているのは意図的(ユーザーデータ・認証情報の保存先)。
+- `package.json` の `test` に付く `--passWithNoTests` は意図的(現状テストファイルなし)。
+- `preinstall` の `only-allow pnpm` は意図的(pnpm 強制)。
+- `cycletls` による TLS 指紋の調整はスクレイピング用途の正規実装であり、不正な難読化ではない。
