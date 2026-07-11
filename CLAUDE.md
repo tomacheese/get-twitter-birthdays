@@ -1,110 +1,74 @@
 # CLAUDE.md
 
-## 目的
-このドキュメントは、Claude Code が `get-twitter-birthdays` リポジトリで作業する際の方針とルールを定義します。
-
-## 判断記録のルール
-1. **判断内容の要約**: 何を決定したか簡潔に記載
-2. **検討した代替案**: 他にどのようなアプローチを検討したか
-3. **採用しなかった案とその理由**: なぜ他の案を採用しなかったか
-4. **前提条件・仮定・不確実性**: 判断の基礎となった情報と、未確定な要素
-5. **他エージェントによるレビュー可否**: Codex CLI 等によるレビューが必要か
-
 ## プロジェクト概要
-- 目的: Twitter/X のフォローユーザーの誕生日を取得・保存する
-- 主な機能: 自動スクレイピング、誕生日抽出、JSON 出力
 
-## 重要ルール
-- **会話言語**: 日本語
-- **コミット規約**: Conventional Commits (`feat: ...`, `fix: ...`)
-- **コメント言語**: 日本語 (docstring 含む)
-- **エラーメッセージ**: 英語
-- **テキスト整形**: 日本語と英数字の間に半角スペースを挿入
-
-## 環境のルール
-- **ブランチ命名**: `feat/description`, `fix/description` (Conventional Branch)
-- **リポジトリ調査**: 調査時はテンポラリディレクトリに git clone して検索
-- **Renovate**: Renovate の PR には触れない
-
-## Git Worktree
-- 本リポジトリでは Git Worktree の使用を推奨 (`.bare/<branch>` 構成)
-
-## コード改修時のルール
-- エラーメッセージの先頭に絵文字がある場合は、全体で絵文字を設定する
-- `tsconfig.json` 等で `skipLibCheck` を有効にしない
-- 公開関数やインターフェースには日本語の docstring を記述する
-
-## 相談ルール
-- 実装レビューや整合性確認は Codex CLI に相談可能
-- 外部仕様や最新情報は Gemini CLI に確認可能
-- 指摘事項は無視せず対応する
+- 目的: Twitter/X でフォロー中のユーザーの誕生日を取得し `data/birthdays.json` に保存する CLI ツール
+- 取得した誕生日を Google Calendar に年次繰り返しイベントとして同期する機能もある(オプション)
+- 中核: `@the-convocation/twitter-scraper` でログイン、`twitter-openapi-typescript` でフォロー一覧・詳細を取得、`cycletls` で TLS 指紋対策
+- 進捗ファイルによるリジューム対応、レートリミット (429) 待機に対応
 
 ## 開発コマンド
+
 ```bash
-# インストール
-pnpm install
-
-# 開発サーバー (Watch)
-pnpm dev
-
-# 本番実行
-pnpm start
-
-# テスト
-pnpm test
-
-# Lint チェック
-pnpm lint
-
-# コード修正 (Lint & Format)
-pnpm fix
+pnpm install        # 依存関係のインストール (pnpm 以外は preinstall で拒否)
+pnpm dev            # tsx watch でエントリを起動
+pnpm start          # tsx で src/main.ts を実行
+pnpm auth:google    # Google Calendar 連携用の OAuth2 認証フローを実行
+pnpm lint           # prettier --check + eslint + tsc (型チェック) を run-z で連続実行
+pnpm fix            # prettier --write + eslint --fix
+pnpm test           # jest (--passWithNoTests つき)
 ```
 
 ## アーキテクチャと主要ファイル
-- `src/main.ts`: エントリーポイント
-- `src/core/`: コアロジック (following.ts, output.ts)
-- `src/infra/`: インフラ層 (auth.ts, cycletls.ts, storage.ts)
-- `src/shared/`: 共有ユーティリティ (config.ts, types.ts)
-- `data/`: 設定ファイルや出力ファイルの保存先
 
-## 実装パターン
-- `twitter-openapi-typescript` と `twitter-scraper` を組み合わせたスクレイピング
-- `cycletls` による TLS 指紋対策
-- `infra/storage.ts` を介したファイル操作
+- `src/main.ts`: エントリーポイント(フォロー取得 → 誕生日抽出 → 出力 → 任意で Calendar 同期)
+- `src/auth-google.ts`: `pnpm auth:google` から呼ばれる Google OAuth2 認証フロー用エントリ
+- `src/core/`: ドメインロジック
+  - `following.ts`(フォロー一覧・誕生日抽出)、`output.ts`(JSON 出力)、`calendar-sync.ts`(Calendar への差分同期)
+- `src/infra/`: 外部連携層
+  - `auth.ts`(Twitter ログイン)、`cycletls.ts`(TLS ラッパー)、`storage.ts`(ファイル I/O)、`calendar-client.ts` / `google-auth.ts`(Google Calendar)、`logger.ts`
+- `src/shared/`: `config.ts`(環境変数・設定読み込み)、`types.ts`、`retry.ts` / `google-retry.ts`(リトライ)
+- `src/types/third-party.d.ts`: 型定義のない外部ライブラリの補完
+- `data/`: 設定・出力・キャッシュ・トークンの保存先(`.gitignore` 対象)
+
+ファイルの読み書きは直接 `fs` を触らず `src/infra/storage.ts` を経由する。
+
+## コーディング規約
+
+- 言語: TypeScript。ランタイムは Node.js(`.node-version` は 24.18.0)、パッケージマネージャは pnpm
+- Lint/Format: ESLint(`@book000/eslint-config` + standard)+ Prettier。コミット前に `pnpm lint` を通す
+- 公開関数・インターフェースには日本語で JSDoc を書く
+- `any` を避ける。型は `src/shared/types.ts` を参照・拡張する
+- `tsconfig.json` の `skipLibCheck` は有効化しない
+- エラーメッセージは英語。先頭に絵文字を付ける場合は一貫して付ける
+- コメント言語は日本語。日本語と英数字の間には半角スペースを入れる
 
 ## テスト
-- フレームワーク: Jest
-- テストは `src/**/*.test.ts` に配置
-- `pnpm test` で実行
 
-## ドキュメント更新ルール
-- 機能追加・変更時は `README.md` の「使い方は」「環境変数」セクションを更新
-- `package.json` の更新時は依存関係を確認
+- フレームワークは Jest(`ts-jest`)、対象は `**/*.test.ts`
+- 現状テストファイルは存在せず、`pnpm test` は `--passWithNoTests` で通る。変更の動作確認は `pnpm lint`(型チェック含む)と `pnpm start` の手動実行で行う
+- テストを追加する場合は対象コードと同階層に `*.test.ts` を置く
 
-## 作業チェックリスト
+## セキュリティ / 機密情報
 
-### 新規改修時
-1. プロジェクト構造と目的を理解する
-2. 適切なブランチを作成する (最新の default ブランチから)
-3. 不要になったブランチを削除する
-4. `pnpm install` を実行する
-
-### コミット・プッシュ前
-1. メッセージが Conventional Commits に準拠しているか確認
-2. 認証情報等の機密情報が含まれていないか確認
-3. `pnpm lint` が通ることを確認
-4. `pnpm start` や `pnpm test` で動作確認
-
-### PR 作成前
-1. ユーザーからの依頼に基づいているか確認
-2. コンフリクトの可能性がないか確認
-
-### PR 作成後
-1. コンフリクトがないか確認
-2. PR 本文に最新の変更内容のみを日本語で記述
-3. CI (`gh pr checks`) の成功を確認
-4. Copilot/Codex のレビューに対応
+- `data/config.json` や `.env` に含まれる Twitter 認証情報(パスワード・Cookie・メールアドレス)、Google の `data/google-credentials.json` / `data/google-tokens.json` は絶対にコミットしない
+- ログや出力に個人情報を含めない。`RESPONSES_LOG_ENABLED=1` を設定すると API レスポンス(個人情報を含む)を `data/responses` に保存するため取り扱いに注意する
+- `data/` はユーザーデータが入るため操作時に注意する
 
 ## リポジトリ固有
-- `data/` ディレクトリは `.gitignore` されているが、ユーザーデータが入るため操作時は注意
-- スクレイピングを行うため、レートリミットや API 仕様変更に留意する
+
+- 環境変数で挙動を細かく制御する(認証情報、各種パス、取得上限、Google Calendar 同期など)。追加・変更時は `src/shared/config.ts` と `README.md`「環境変数」節を同期させる
+- Docker 実行をサポート(`docker build -t get-twitter-birthdays .`)。Google 認証時はポート 3000 のマッピングが必要
+- スクレイピングのため、Twitter 側の仕様変更・レートリミットに留意する
+- Renovate の PR には直接コミットしない
+
+## ドキュメント更新ルール
+
+- 機能追加・仕様変更時は `README.md`(使い方・環境変数・仕組み)を更新する
+- 環境変数を増減した場合は `README.md` と `src/shared/config.ts` の双方を確認する
+- ディレクトリ構成やコマンドを変えたら、この CLAUDE.md の該当節も更新する
+
+## Git / コミット
+
+- コミットは Conventional Commits(`feat:`, `fix:`, `chore:` など)。description は日本語
+- ブランチは Conventional Branch 形式(`feat/...`, `fix/...`)
