@@ -4,3 +4,5 @@ allowBuilds:
 confirmModulesPurge: false
 minimumReleaseAgeExclude:
   - '@book000/*'
+overrides:
+  google-auth-library: 10.9.0
