@@ -67,10 +67,12 @@ async function performLoopbackAuth(
 
     // クリーンアップ関数
     const cleanup = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
+      if (!timeoutId) {
+        return
       }
+
+      clearTimeout(timeoutId)
+      timeoutId = null
     }
 
     // ループバックサーバーを起動

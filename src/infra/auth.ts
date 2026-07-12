@@ -54,15 +54,16 @@ async function loginWithRetry(
 export function resolveCredentials(config: Config | null): Credentials {
   const username = process.env.TWITTER_USERNAME ?? config?.twitter?.username
   const password = process.env.TWITTER_PASSWORD ?? config?.twitter?.password
-  const emailAddress =
-    process.env.TWITTER_EMAIL_ADDRESS ?? config?.twitter?.emailAddress
-  const twoFactorSecret = process.env.TWITTER_AUTH_CODE_SECRET
 
   if (!username || !password) {
     throw new Error(
       `Missing Twitter credentials. Set TWITTER_USERNAME/TWITTER_PASSWORD or provide them in ${CONFIG_PATH}.`
     )
   }
+
+  const emailAddress =
+    process.env.TWITTER_EMAIL_ADDRESS ?? config?.twitter?.emailAddress
+  const twoFactorSecret = process.env.TWITTER_AUTH_CODE_SECRET
 
   return {
     username,

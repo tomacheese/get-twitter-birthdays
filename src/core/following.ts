@@ -124,9 +124,11 @@ export async function fetchFollowingUsers(
     )
     if (envFlag('FORCE_DETAIL_REFRESH')) {
       stage = 'details'
-      missingBirthdateIds = [...usersById.values()]
+      missingBirthdateIds = usersById
+        .values()
         .filter((user) => !user.birthdate)
         .map((user) => user.id)
+        .toArray()
       detailBatchIndex = 0
       console.log('FORCE_DETAIL_REFRESH=1: recalculated missing birthdates.')
     }
@@ -161,7 +163,7 @@ export async function fetchFollowingUsers(
     seenCursors: [...seenCursors],
     page,
     processedUsers,
-    users: [...usersById.values()],
+    users: usersById.values().toArray(),
     missingBirthdateIds,
     detailBatchIndex: detailIndex,
   })
@@ -295,7 +297,10 @@ export async function fetchFollowingUsers(
           processedUsers += 1
           console.log(
             `Processed ${processedUsers} users. Birthdays found: ${
-              [...usersById.values()].filter((item) => item.birthdate).length
+              usersById
+                .values()
+                .filter((item) => item.birthdate)
+                .toArray().length
             }`
           )
           persistState('following')
@@ -330,9 +335,11 @@ export async function fetchFollowingUsers(
     }
 
     stage = 'details'
-    missingBirthdateIds = [...usersById.values()]
+    missingBirthdateIds = usersById
+      .values()
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
+      .toArray()
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
@@ -342,9 +349,11 @@ export async function fetchFollowingUsers(
   }
 
   if (stage === 'details') {
-    missingBirthdateIds ??= [...usersById.values()]
+    missingBirthdateIds ??= usersById
+      .values()
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
+      .toArray()
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
