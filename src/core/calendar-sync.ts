@@ -11,7 +11,7 @@ import {
   updateCalendarEvent,
 } from '../infra/calendar-client'
 import { loadCalendarEvents, saveCalendarEvents } from '../infra/storage'
-import { SYNC_CALENDAR_RECONCILE } from '../shared/config'
+import { IS_SYNC_CALENDAR_RECONCILE } from '../shared/config'
 
 type OAuth2Client = Auth.OAuth2Client
 
@@ -164,7 +164,7 @@ export async function syncToGoogleCalendar(
   }
 
   // Reconcile: カレンダーから削除されたユーザーを検出して削除
-  if (SYNC_CALENDAR_RECONCILE) {
+  if (IS_SYNC_CALENDAR_RECONCILE) {
     const removedUserIds = Object.keys(events).filter(
       (userId) => !currentUserIds.has(userId)
     )

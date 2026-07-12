@@ -22,10 +22,14 @@ import type {
  * 出力先ディレクトリが存在することを保証する。
  * @param outputPath 出力ファイルのパス
  */
-export function ensureOutputDir(outputPath: string): void {
-  const outDir = path.dirname(outputPath)
-  if (outDir && outDir !== '.' && !fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true })
+export function ensureOutputDirectory(outputPath: string): void {
+  const outputDirectory = path.dirname(outputPath)
+  if (
+    outputDirectory &&
+    outputDirectory !== '.' &&
+    !fs.existsSync(outputDirectory)
+  ) {
+    fs.mkdirSync(outputDirectory, { recursive: true })
   }
 }
 
@@ -35,7 +39,7 @@ export function ensureOutputDir(outputPath: string): void {
  * @param output 出力内容
  */
 export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
-  ensureOutputDir(outputPath)
+  ensureOutputDirectory(outputPath)
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2))
 }
 
@@ -45,7 +49,7 @@ export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
  * @param state 進捗状態
  */
 export function saveProgress(progressPath: string, state: ResumeState): void {
-  ensureOutputDir(progressPath)
+  ensureOutputDirectory(progressPath)
   fs.writeFileSync(progressPath, JSON.stringify(state, null, 2))
 }
 
@@ -88,11 +92,11 @@ function isValidCachedCookies(data: unknown): data is CachedCookies {
   if (typeof data !== 'object' || data === null) {
     return false
   }
-  const obj = data as Record<string, unknown>
+  const object = data as Record<string, unknown>
   return (
-    typeof obj.auth_token === 'string' &&
-    typeof obj.ct0 === 'string' &&
-    typeof obj.savedAt === 'number'
+    typeof object.auth_token === 'string' &&
+    typeof object.ct0 === 'string' &&
+    typeof object.savedAt === 'number'
   )
 }
 
@@ -127,9 +131,9 @@ export function loadCachedCookies(): CachedCookies | null {
  * @param ct0 CSRFトークン
  */
 export function saveCookies(authToken: string, ct0: string): void {
-  const dir = path.dirname(COOKIE_CACHE_FILE)
-  if (dir && dir !== '.' && !fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+  const directory = path.dirname(COOKIE_CACHE_FILE)
+  if (directory && directory !== '.' && !fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true })
   }
   const data: CachedCookies = {
     auth_token: authToken,
@@ -178,7 +182,7 @@ export function loadGoogleTokens(): GoogleTokens | null {
  * @param tokens Google トークン
  */
 export function saveGoogleTokens(tokens: GoogleTokens): void {
-  ensureOutputDir(GOOGLE_TOKEN_CACHE_PATH)
+  ensureOutputDirectory(GOOGLE_TOKEN_CACHE_PATH)
   fs.writeFileSync(GOOGLE_TOKEN_CACHE_PATH, JSON.stringify(tokens, null, 2))
 }
 
@@ -204,6 +208,6 @@ export function loadCalendarEvents(): CalendarEventsStorage {
  * @param events カレンダーイベント記録
  */
 export function saveCalendarEvents(events: CalendarEventsStorage): void {
-  ensureOutputDir(CALENDAR_EVENTS_PATH)
+  ensureOutputDirectory(CALENDAR_EVENTS_PATH)
   fs.writeFileSync(CALENDAR_EVENTS_PATH, JSON.stringify(events, null, 2))
 }

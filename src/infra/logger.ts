@@ -1,20 +1,22 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { RESPONSES_DIR, RESPONSES_LOG_ENABLED } from '../shared/config'
+import { IS_RESPONSES_LOG_ENABLED, RESPONSES_DIR } from '../shared/config'
 
-let responseLogDir: string | null = null
-let responseLogCounter = 0
+const responseLogState: { directory: string | null; counter: number } = {
+  directory: null,
+  counter: 0,
+}
 
 /**
  * レスポンスログ保存用のディレクトリを用意する。
  * @returns ディレクトリパス
  */
-function ensureResponseLogDir(): string | null {
-  if (!RESPONSES_LOG_ENABLED) {
+function ensureResponseLogDirectory(): string | null {
+  if (!IS_RESPONSES_LOG_ENABLED) {
     return null
   }
-  if (responseLogDir) {
-    return responseLogDir
+  if (responseLogState.directory) {
+    return responseLogState.directory
   }
   const now = new Date()
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(
@@ -26,16 +28,16 @@ function ensureResponseLogDir(): string | null {
   )}${String(now.getMinutes()).padStart(2, '0')}${String(
     now.getSeconds()
   ).padStart(2, '0')}`
-  responseLogDir = path.join(RESPONSES_DIR, timestamp)
-  fs.mkdirSync(responseLogDir, { recursive: true })
-  return responseLogDir
+  responseLogState.directory = path.join(RESPONSES_DIR, timestamp)
+  fs.mkdirSync(responseLogState.directory, { recursive: true })
+  return responseLogState.directory
 }
 
 /**
  * HTTPレスポンスをファイルに保存する。
- * @param params 保存対象の情報
+ * @param parameters 保存対象の情報
  */
-export function writeResponseLog(params: {
+export function writeResponseLog(parameters: {
   url: string
   method: string
   status: number
@@ -43,24 +45,26 @@ export function writeResponseLog(params: {
   body: string
 }): void {
   try {
-    const dir = ensureResponseLogDir()
-    if (!dir) {
+    const directory = ensureResponseLogDirectory()
+    if (!directory) {
       return
     }
-    responseLogCounter += 1
-    const index = String(responseLogCounter).padStart(6, '0')
-    const safeUrl = params.url.replaceAll(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80)
-    const baseName = `${index}_${params.method}_${safeUrl || 'response'}`
-    const metaPath = path.join(dir, `${baseName}.json`)
-    const bodyPath = path.join(dir, `${baseName}.body`)
+    responseLogState.counter += 1
+    const index = String(responseLogState.counter).padStart(6, '0')
+    const safeUrl = parameters.url
+      .replaceAll(/[^a-zA-Z0-9._-]+/g, '_')
+      .slice(0, 80)
+    const baseName = `${index}_${parameters.method}_${safeUrl || 'response'}`
+    const metaPath = path.join(directory, `${baseName}.json`)
+    const bodyPath = path.join(directory, `${baseName}.body`)
     fs.writeFileSync(
       metaPath,
       JSON.stringify(
         {
-          url: params.url,
-          method: params.method,
-          status: params.status,
-          headers: params.headers,
+          url: parameters.url,
+          method: parameters.method,
+          status: parameters.status,
+          headers: parameters.headers,
           bodyFile: path.basename(bodyPath),
           recordedAt: new Date().toISOString(),
         },
@@ -68,7 +72,7 @@ export function writeResponseLog(params: {
         2
       )
     )
-    fs.writeFileSync(bodyPath, params.body)
+    fs.writeFileSync(bodyPath, parameters.body)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.warn(`Failed to write response log: ${message}`)

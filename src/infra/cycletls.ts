@@ -4,15 +4,17 @@ import { cycleTLSExit } from '@the-convocation/twitter-scraper/cycletls'
 import type { HeadersLike } from '../shared/types'
 import { writeResponseLog } from './logger'
 
-let cycleTLSInstancePromise: Promise<CycleTLSClient> | null = null
+const cycleTLSState: { instancePromise: Promise<CycleTLSClient> | null } = {
+  instancePromise: null,
+}
 
 /**
  * CycleTLSクライアントを初期化して取得する。
  * @returns CycleTLSクライアント
  */
 async function initCycleTLSWithProxy(): Promise<CycleTLSClient> {
-  cycleTLSInstancePromise ??= initCycleTLS()
-  return cycleTLSInstancePromise
+  cycleTLSState.instancePromise ??= initCycleTLS()
+  return cycleTLSState.instancePromise
 }
 
 /**
@@ -30,7 +32,7 @@ export async function cycleTLSFetchWithProxy(
     typeof input === 'string'
       ? input
       : input instanceof URL
-        ? input.toString()
+        ? input.href
         : input.url
 
   const method = (init?.method ?? 'GET').toUpperCase()
@@ -46,7 +48,7 @@ export async function cycleTLSFetchWithProxy(
       for (const [key, value] of init.headers) {
         headers[key] = value
       }
-    } else if (h[Symbol.iterator] && typeof h[Symbol.iterator] === 'function') {
+    } else if (typeof h[Symbol.iterator] === 'function') {
       for (const [key, value] of init.headers as unknown as Iterable<
         [string, string]
       >) {
@@ -87,7 +89,7 @@ export async function cycleTLSFetchWithProxy(
         const proxyUrl = new URL(normalizedProxyServer)
         proxyUrl.username = proxyUsername
         proxyUrl.password = proxyPassword
-        proxy = proxyUrl.toString()
+        proxy = proxyUrl.href
       } catch (error) {
         console.warn('Failed to parse PROXY_SERVER URL', error)
         const message = error instanceof Error ? error.message : String(error)
@@ -165,9 +167,9 @@ export async function cycleTLSFetchWithProxy(
  * @returns なし
  */
 export async function cleanupCycleTLS(): Promise<void> {
-  if (cycleTLSInstancePromise) {
+  if (cycleTLSState.instancePromise) {
     try {
-      const instance = await cycleTLSInstancePromise
+      const instance = await cycleTLSState.instancePromise
       await instance.exit()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'

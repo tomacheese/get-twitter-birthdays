@@ -59,7 +59,7 @@ function getRetryDelay(error: unknown, attempt: number): number {
         : retryAfter
 
       // 秒数で指定されている場合
-      const seconds = Number.parseInt(retryAfterValue, 10)
+      const seconds = Number(retryAfterValue)
       if (!Number.isNaN(seconds)) {
         return seconds * 1000
       }
@@ -79,19 +79,19 @@ function getRetryDelay(error: unknown, attempt: number): number {
 /**
  * Google API の呼び出しをリトライ処理でラップする。
  *
- * @param fn 実行する非同期関数
+ * @param function_ 実行する非同期関数
  * @param maxRetries 最大リトライ回数（デフォルト: 3）
  * @returns 関数の実行結果
  */
 export async function withGoogleRetry<T>(
-  fn: () => Promise<T>,
+  function_: () => Promise<T>,
   maxRetries = 3
 ): Promise<T> {
   let lastError: unknown
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await fn()
+      return await function_()
     } catch (error) {
       lastError = error
 

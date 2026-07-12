@@ -4,7 +4,7 @@ import {
   GOOGLE_CREDENTIALS_PATH,
   OUTPUT_PATH,
   PROGRESS_PATH,
-  SYNC_CALENDAR_STRICT,
+  IS_SYNC_CALENDAR_STRICT,
 } from './shared/config'
 import { getAuthCookies, resolveCredentials } from './infra/auth'
 import { cleanupCycleTLS, cycleTLSFetchWithProxy } from './infra/cycletls'
@@ -74,7 +74,7 @@ async function main(): Promise<number> {
         await syncToGoogleCalendar(oauth2Client, output)
       } catch (error) {
         console.error('❌ Google Calendar 同期中にエラーが発生しました:', error)
-        if (SYNC_CALENDAR_STRICT) {
+        if (IS_SYNC_CALENDAR_STRICT) {
           exitCode = 1
         }
       }
@@ -89,12 +89,11 @@ async function main(): Promise<number> {
   return exitCode
 }
 
-main().then(
-  (exitCode) => {
-    process.exitCode = exitCode
-  },
-  (error: unknown) => {
+;(async () => {
+  try {
+    process.exitCode = await main()
+  } catch (error) {
     console.error('Fatal error occurred', error)
     process.exitCode = 1
   }
-)
+})()

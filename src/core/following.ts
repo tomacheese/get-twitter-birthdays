@@ -3,8 +3,8 @@ import {
   BATCH_SIZE,
   DEFAULT_MAX_EMPTY_PAGES,
   FOLLOWING_PAGE_SIZE,
-  envFlag,
-  envNumber,
+  getEnvironmentNumber,
+  isEnvironmentFlagSet,
 } from '../shared/config'
 import type {
   ApiBirthdate,
@@ -30,8 +30,8 @@ export type TwitterClient = Awaited<
  */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size))
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
   }
   return chunks
 }
@@ -105,8 +105,10 @@ export async function fetchFollowingUsers(
   let missingBirthdateIds: string[] | undefined
   let detailBatchIndex = 0
   let birthdateLookupCount = 0
-  const enableBirthdateLookup = envFlag('PER_USER_BIRTHDATE_LOOKUP')
-  const maxBirthdateLookup = envNumber('MAX_BIRTHDATE_LOOKUP', 0)
+  const isBirthdateLookupEnabled = isEnvironmentFlagSet(
+    'PER_USER_BIRTHDATE_LOOKUP'
+  )
+  const maxBirthdateLookup = getEnvironmentNumber('MAX_BIRTHDATE_LOOKUP', 0)
 
   if (progress?.sourceUser === sourceUser) {
     stage = progress.stage
@@ -122,15 +124,17 @@ export async function fetchFollowingUsers(
     console.log(
       `Resuming from progress file. Stage=${stage}, page=${page}, processed=${processedUsers}.`
     )
-    if (envFlag('FORCE_DETAIL_REFRESH')) {
+    if (isEnvironmentFlagSet('FORCE_DETAIL_REFRESH')) {
       stage = 'details'
-      missingBirthdateIds = [...usersById.values()]
+      missingBirthdateIds = usersById
+        .values()
         .filter((user) => !user.birthdate)
         .map((user) => user.id)
+        .toArray()
       detailBatchIndex = 0
       console.log('FORCE_DETAIL_REFRESH=1: recalculated missing birthdates.')
     }
-    if (envFlag('FORCE_FOLLOWING_REFRESH')) {
+    if (isEnvironmentFlagSet('FORCE_FOLLOWING_REFRESH')) {
       stage = 'following'
       cursor = undefined
       seenCursors = new Set()
@@ -143,7 +147,7 @@ export async function fetchFollowingUsers(
     }
   }
 
-  const maxPages = envNumber('MAX_FOLLOWING_PAGES', 0)
+  const maxPages = getEnvironmentNumber('MAX_FOLLOWING_PAGES', 0)
 
   /**
    * 進捗保存用の状態オブジェクトを構築する。
@@ -161,7 +165,7 @@ export async function fetchFollowingUsers(
     seenCursors: [...seenCursors],
     page,
     processedUsers,
-    users: [...usersById.values()],
+    users: usersById.values().toArray(),
     missingBirthdateIds,
     detailBatchIndex: detailIndex,
   })
@@ -196,7 +200,7 @@ export async function fetchFollowingUsers(
    * @returns 実行可能なら true
    */
   const canLookupBirthdate = (): boolean =>
-    enableBirthdateLookup &&
+    isBirthdateLookupEnabled &&
     (maxBirthdateLookup === 0 || birthdateLookupCount < maxBirthdateLookup)
 
   /**
@@ -225,21 +229,57 @@ export async function fetchFollowingUsers(
   }
 
   /**
+   * フォロー一覧1ページ分のエントリをMapに反映する。
+   * @param entries フォロー一覧のエントリ一覧
+   * @returns 新規追加したユーザー数
+   */
+  const processFollowingPageEntries = (
+    entries: Awaited<
+      ReturnType<ReturnType<TwitterClient['getUserListApi']>['getFollowing']>
+    >['data']['data']
+  ): number => {
+    let added = 0
+    for (const entry of entries) {
+      const user = entry.user
+      if (!user) {
+        continue
+      }
+      const userEntry = toResumeUserEntry(user)
+      if (!userEntry || usersById.has(userEntry.id)) {
+        continue
+      }
+      usersById.set(userEntry.id, userEntry)
+      added += 1
+      processedUsers += 1
+      console.log(
+        `Processed ${processedUsers} users. Birthdays found: ${
+          usersById
+            .values()
+            .filter((item) => item.birthdate)
+            .toArray().length
+        }`
+      )
+      persistState('following')
+    }
+    return added
+  }
+
+  /**
    * 取得したユーザー情報を既存Mapに反映する。
    * @param user APIユーザー情報
-   * @param requireExisting 既存エントリが必須かどうか
+   * @param isExistingRequired 既存エントリが必須かどうか
    * @returns 更新後のユーザー情報
    */
   const upsertUser = (
     user: ApiUser,
-    requireExisting = false
+    isExistingRequired = false
   ): ResumeUserEntry | null => {
     const entry = toResumeUserEntry(user)
     if (!entry) {
       return null
     }
     const current = usersById.get(entry.id)
-    if (requireExisting && !current) {
+    if (isExistingRequired && !current) {
       return null
     }
     if (!entry.birthdate && current?.birthdate) {
@@ -249,9 +289,91 @@ export async function fetchFollowingUsers(
     return entry
   }
 
+  /**
+   * ユーザー詳細1件をMapに反映し、必要なら誕生日を再照会する。
+   * @param user APIユーザー情報
+   * @param batchIndex 現在処理中のバッチ番号(進捗保存用)
+   */
+  const applyUserDetail = async (
+    user: ApiUser,
+    batchIndex: number
+  ): Promise<void> => {
+    const entry = upsertUser(user, true)
+    if (!entry) {
+      return
+    }
+    if (!entry.birthdate && canLookupBirthdate()) {
+      const lookupResult = await lookupBirthdate(entry.screenName)
+      if (lookupResult) {
+        entry.birthdate = lookupResult
+        usersById.set(entry.id, entry)
+      }
+    }
+    const birthdateText = entry.birthdate
+      ? formatBirthdate(entry.birthdate)
+      : 'none'
+    console.log(
+      `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
+    )
+    persistState('details', batchIndex)
+  }
+
+  /**
+   * 一括取得APIのレスポンスに含まれるユーザー詳細をすべて反映する。
+   * @param detailResponse 一括取得APIのレスポンス
+   * @param batchIndex 現在処理中のバッチ番号(進捗保存用)
+   */
+  const processDetailResponseBatch = async (
+    detailResponse: Awaited<
+      ReturnType<ReturnType<TwitterClient['getUsersApi']>['getUsersByRestIds']>
+    >,
+    batchIndex: number
+  ): Promise<void> => {
+    for (const detail of detailResponse.data) {
+      const user = detail.user
+      if (!user) {
+        continue
+      }
+      await applyUserDetail(user, batchIndex)
+    }
+  }
+
+  /**
+   * 一括取得APIが利用できない場合に、ユーザー単体APIで詳細を反映する。
+   * @param restIds 対象ユーザーIDの一覧
+   * @param batchIndex 現在処理中のバッチ番号(進捗保存用)
+   */
+  const processDetailFallbackBatch = async (
+    restIds: string[],
+    batchIndex: number
+  ): Promise<void> => {
+    for (const restId of restIds) {
+      const current = usersById.get(restId)
+      if (!current) {
+        continue
+      }
+      const detail = await withRetry(
+        () => client.getUserApi().getUserByRestId({ userId: restId }),
+        {
+          maxRetries: 3,
+          baseDelayMs: 2000,
+          operationName: `Fetch user ${restId}`,
+        }
+      )
+      const user = detail.data.user
+      if (!user) {
+        continue
+      }
+      await applyUserDetail(user, batchIndex)
+    }
+  }
+
   if (stage === 'following') {
-    const maxUsers = envNumber('MAX_FOLLOWING_USERS', 0)
-    const maxEmptyPages = envNumber('MAX_EMPTY_PAGES', DEFAULT_MAX_EMPTY_PAGES)
+    const maxUsers = getEnvironmentNumber('MAX_FOLLOWING_USERS', 0)
+    const maxEmptyPages = getEnvironmentNumber(
+      'MAX_EMPTY_PAGES',
+      DEFAULT_MAX_EMPTY_PAGES
+    )
     let emptyPages = 0
     if (maxUsers > 0 && processedUsers >= maxUsers) {
       console.warn(
@@ -280,26 +402,7 @@ export async function fetchFollowingUsers(
           }
         )
 
-        let addedThisPage = 0
-        for (const entry of following.data.data) {
-          const user = entry.user
-          if (!user) {
-            continue
-          }
-          const userEntry = toResumeUserEntry(user)
-          if (!userEntry || usersById.has(userEntry.id)) {
-            continue
-          }
-          usersById.set(userEntry.id, userEntry)
-          addedThisPage += 1
-          processedUsers += 1
-          console.log(
-            `Processed ${processedUsers} users. Birthdays found: ${
-              [...usersById.values()].filter((item) => item.birthdate).length
-            }`
-          )
-          persistState('following')
-        }
+        const addedThisPage = processFollowingPageEntries(following.data.data)
 
         console.log(
           `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`
@@ -330,10 +433,12 @@ export async function fetchFollowingUsers(
     }
 
     stage = 'details'
-    missingBirthdateIds = [...usersById.values()]
+    missingBirthdateIds = usersById
+      .values()
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
-    const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
+      .toArray()
+    const maxDetailUsers = getEnvironmentNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
     }
@@ -342,10 +447,12 @@ export async function fetchFollowingUsers(
   }
 
   if (stage === 'details') {
-    missingBirthdateIds ??= [...usersById.values()]
+    missingBirthdateIds ??= usersById
+      .values()
       .filter((user) => !user.birthdate)
       .map((user) => user.id)
-    const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
+      .toArray()
+    const maxDetailUsers = getEnvironmentNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
     }
@@ -387,69 +494,9 @@ export async function fetchFollowingUsers(
           }
         }
 
-        if (detailResponse) {
-          for (const detail of detailResponse.data) {
-            const user = detail.user
-            if (!user) {
-              continue
-            }
-            const entry = upsertUser(user, true)
-            if (!entry) {
-              continue
-            }
-            if (!entry.birthdate && canLookupBirthdate()) {
-              const lookupResult = await lookupBirthdate(entry.screenName)
-              if (lookupResult) {
-                entry.birthdate = lookupResult
-                usersById.set(entry.id, entry)
-              }
-            }
-            const birthdateText = entry.birthdate
-              ? formatBirthdate(entry.birthdate)
-              : 'none'
-            console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
-            )
-            persistState('details', batchIndex)
-          }
-        } else {
-          for (const restId of batch) {
-            const current = usersById.get(restId)
-            if (!current) {
-              continue
-            }
-            const detail = await withRetry(
-              () => client.getUserApi().getUserByRestId({ userId: restId }),
-              {
-                maxRetries: 3,
-                baseDelayMs: 2000,
-                operationName: `Fetch user ${restId}`,
-              }
-            )
-            const user = detail.data.user
-            if (!user) {
-              continue
-            }
-            const entry = upsertUser(user, true)
-            if (!entry) {
-              continue
-            }
-            if (!entry.birthdate && canLookupBirthdate()) {
-              const lookupResult = await lookupBirthdate(entry.screenName)
-              if (lookupResult) {
-                entry.birthdate = lookupResult
-                usersById.set(entry.id, entry)
-              }
-            }
-            const birthdateText = entry.birthdate
-              ? formatBirthdate(entry.birthdate)
-              : 'none'
-            console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
-            )
-            persistState('details', batchIndex)
-          }
-        }
+        await (detailResponse
+          ? processDetailResponseBatch(detailResponse, batchIndex)
+          : processDetailFallbackBatch(batch, batchIndex))
       }
     }
     stage = 'done'

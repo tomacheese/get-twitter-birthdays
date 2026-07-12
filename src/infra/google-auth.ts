@@ -67,10 +67,12 @@ async function performLoopbackAuth(
 
     // クリーンアップ関数
     const cleanup = () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-        timeoutId = null
+      if (!timeoutId) {
+        return
       }
+
+      clearTimeout(timeoutId)
+      timeoutId = null
     }
 
     // ループバックサーバーを起動
@@ -208,8 +210,8 @@ async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
   console.log()
   console.log('📋 利用可能なカレンダー:')
   for (const [index, cal] of calendars.entries()) {
-    const isPrimary = cal.primary ? ' (プライマリ)' : ''
-    console.log(`  ${index + 1}. ${cal.summary ?? 'Untitled'}${isPrimary}`)
+    const primaryLabel = cal.primary ? ' (プライマリ)' : ''
+    console.log(`  ${index + 1}. ${cal.summary ?? 'Untitled'}${primaryLabel}`)
   }
 
   console.log()
