@@ -72,6 +72,6 @@
     "cycletls": "2.0.5",
     "googleapis": "173.0.0",
     "headers-polyfill": "5.0.1",
-    "twitter-openapi-typescript": "0.0.55"
+    "twitter-openapi-typescript": "0.0.56"
   }
 }
