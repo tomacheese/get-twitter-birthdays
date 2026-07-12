@@ -73,7 +73,7 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   return {
     id: restId,
     screenName: legacy.screenName,
-    name: legacy.name,
+    name: legacy.name ?? legacy.screenName,
     birthdate: normalizeBirthdate(user.legacyExtendedProfile?.birthdate),
   }
 }

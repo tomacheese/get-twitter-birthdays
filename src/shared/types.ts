@@ -86,7 +86,7 @@ export interface ApiUser {
   id?: string
   legacy?: {
     screenName?: string
-    name: string
+    name?: string
   }
   legacyExtendedProfile?: {
     birthdate?: ApiBirthdate
