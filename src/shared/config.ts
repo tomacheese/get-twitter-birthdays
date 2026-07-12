@@ -18,8 +18,7 @@ export const GOOGLE_TOKEN_CACHE_PATH =
 export const CALENDAR_EVENTS_PATH =
   process.env.CALENDAR_EVENTS_PATH ?? './data/calendar-events.json'
 export const GOOGLE_CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? 'primary'
-export const IS_SYNC_CALENDAR_STRICT =
-  process.env.SYNC_CALENDAR_STRICT === '1'
+export const IS_SYNC_CALENDAR_STRICT = process.env.SYNC_CALENDAR_STRICT === '1'
 export const IS_SYNC_CALENDAR_RECONCILE =
   process.env.SYNC_CALENDAR_RECONCILE === '1'
 
