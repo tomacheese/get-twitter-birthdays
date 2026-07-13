@@ -30,7 +30,7 @@ export async function cycleTLSFetchWithProxy(
     typeof input === 'string'
       ? input
       : input instanceof URL
-        ? input.toString()
+        ? input.href
         : input.url
 
   const method = (init?.method ?? 'GET').toUpperCase()
@@ -46,7 +46,7 @@ export async function cycleTLSFetchWithProxy(
       for (const [key, value] of init.headers) {
         headers[key] = value
       }
-    } else if (h[Symbol.iterator] && typeof h[Symbol.iterator] === 'function') {
+    } else if (typeof h[Symbol.iterator] === 'function') {
       for (const [key, value] of init.headers as unknown as Iterable<
         [string, string]
       >) {
@@ -87,7 +87,7 @@ export async function cycleTLSFetchWithProxy(
         const proxyUrl = new URL(normalizedProxyServer)
         proxyUrl.username = proxyUsername
         proxyUrl.password = proxyPassword
-        proxy = proxyUrl.toString()
+        proxy = proxyUrl.href
       } catch (error) {
         console.warn('Failed to parse PROXY_SERVER URL', error)
         const message = error instanceof Error ? error.message : String(error)

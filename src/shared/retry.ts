@@ -28,7 +28,7 @@ export async function withRetry<T>(
       const status = response?.status
       if (status === 429 || status === 403) {
         const resetHeader = response?.headers.get('x-rate-limit-reset')
-        const resetAt = resetHeader ? Number(resetHeader) * 1000 : Number.NaN
+        const resetAt = resetHeader ? Number(resetHeader) * 1000 : NaN
         if (!Number.isNaN(resetAt)) {
           const delay = Math.max(resetAt - Date.now() + 1000, 1000)
           const resetDate = new Date(resetAt)
