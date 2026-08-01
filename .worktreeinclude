@@ -1,0 +1,7 @@
+data/
+data/config.json
+data/google-credentials.json
+data/google-tokens.json
+data/twitter-cookies.json
+.env
+.env.*
