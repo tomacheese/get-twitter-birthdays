@@ -13,10 +13,9 @@ import type {
 export function formatBirthdate(birthdate: BirthdateInfo): string {
   const month = String(birthdate.month).padStart(2, '0')
   const day = String(birthdate.day).padStart(2, '0')
-  if (birthdate.year) {
-    return `${birthdate.year}-${month}-${day}`
-  }
-  return `${month}-${day}`
+  return birthdate.year
+    ? `${birthdate.year}-${month}-${day}`
+    : `${month}-${day}`
 }
 
 /**
@@ -48,10 +47,9 @@ export function buildOutput(
     if (a.birthdate.month !== b.birthdate.month) {
       return a.birthdate.month - b.birthdate.month
     }
-    if (a.birthdate.day !== b.birthdate.day) {
-      return a.birthdate.day - b.birthdate.day
-    }
-    return a.screenName.localeCompare(b.screenName)
+    return a.birthdate.day === b.birthdate.day
+      ? a.screenName.localeCompare(b.screenName)
+      : a.birthdate.day - b.birthdate.day
   })
 
   return {

@@ -204,14 +204,16 @@ export async function syncToGoogleCalendar(
   )
 
   // エラーがあった場合は集計して報告
-  if (errors.length > 0) {
-    console.log()
-    console.log(`⚠️ ${errors.length} 件のエラーが発生しました:`)
-    for (const { user, error } of errors) {
-      console.log(
-        `  - ${user}: ${error instanceof Error ? error.message : String(error)}`
-      )
-    }
-    throw new Error(`❌ ${errors.length} 件のユーザーで同期に失敗しました`)
+  if (errors.length === 0) {
+    return
   }
+
+  console.log()
+  console.log(`⚠️ ${errors.length} 件のエラーが発生しました:`)
+  for (const { user, error } of errors) {
+    console.log(
+      `  - ${user}: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+  throw new Error(`❌ ${errors.length} 件のユーザーで同期に失敗しました`)
 }
