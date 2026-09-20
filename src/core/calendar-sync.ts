@@ -205,7 +205,7 @@ export async function syncToGoogleCalendar(
 
   // エラーがあった場合は集計して報告
   if (errors.length === 0) {
-  	return;
+    return
   }
 
   console.log()
