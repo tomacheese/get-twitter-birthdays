@@ -111,10 +111,7 @@ export function loadCachedCookies(): CachedCookies | null {
       return null
     }
     const expiryMs = COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    if (Date.now() - data.savedAt > expiryMs) {
-      return null
-    }
-    return data
+    return Date.now() - data.savedAt > expiryMs ? null : data;
   } catch (error) {
     console.warn('Failed to load cached cookies', error)
     return null

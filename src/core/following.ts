@@ -44,16 +44,13 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 function normalizeBirthdate(
   birthdate?: ApiBirthdate | null
 ): BirthdateInfo | undefined {
-  if (!birthdate) {
-    return undefined
-  }
-  return {
+  return birthdate ? {
     day: birthdate.day,
     month: birthdate.month,
     year: birthdate.year,
     visibility: birthdate.visibility,
     yearVisibility: birthdate.yearVisibility,
-  }
+  } : undefined;
 }
 
 /**
@@ -67,15 +64,12 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
     return null
   }
   const restId = user.restId ?? user.id
-  if (!restId) {
-    return null
-  }
-  return {
+  return restId ? {
     id: restId,
     screenName: legacy.screenName,
     name: legacy.name ?? legacy.screenName,
     birthdate: normalizeBirthdate(user.legacyExtendedProfile?.birthdate),
-  }
+  } : null;
 }
 
 /**
@@ -254,12 +248,12 @@ export async function fetchFollowingUsers(
   if (stage === 'following') {
     const maxUsers = envNumber('MAX_FOLLOWING_USERS', 0)
     const maxEmptyPages = envNumber('MAX_EMPTY_PAGES', DEFAULT_MAX_EMPTY_PAGES)
-    let emptyPages = 0
     if (maxUsers > 0 && processedUsers >= maxUsers) {
       console.warn(
         `Already processed ${processedUsers} users (>= MAX_FOLLOWING_USERS=${maxUsers}). Skipping following fetch.`
       )
     } else {
+      let emptyPages = 0;
       while (true) {
         page += 1
         if (maxPages > 0 && page > maxPages) {
