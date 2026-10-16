@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  google-auth-library: 11.2.0
+  google-auth-library: 11.3.0
 
 importers:
 
@@ -2016,8 +2016,8 @@ packages:
   globrex@0.1.2:
     resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
 
-  google-auth-library@11.2.0:
-    resolution: {integrity: sha512-R9/Dwc3swSur04RnizQ6EBUmmcno2cC5cAKtrG/C+pY+W7c5l6rSnFWgMkR7NSYj1n6XWmb/KhcjxGslWm4yIA==}
+  google-auth-library@11.3.0:
+    resolution: {integrity: sha512-gZCyszARHj47WNcKrAcQtimDwtTZpydRZ3HSeb66hObfQU9uaG50ejsZ8LzGISIVAjpsZEouGVs65Q/XRau0Qg==}
     engines: {node: '>=22'}
 
   google-logging-utils@2.0.1:
@@ -5413,7 +5413,7 @@ snapshots:
 
   globrex@0.1.2: {}
 
-  google-auth-library@11.2.0(supports-color@8.1.1):
+  google-auth-library@11.3.0(supports-color@8.1.1):
     dependencies:
       base64-js: 1.5.1
       ecdsa-sig-formatter: 1.0.11
@@ -5430,7 +5430,7 @@ snapshots:
     dependencies:
       extend: 3.0.2
       gaxios: 7.3.1(supports-color@8.1.1)
-      google-auth-library: 11.2.0(supports-color@8.1.1)
+      google-auth-library: 11.3.0(supports-color@8.1.1)
       google-logging-utils: 2.0.1
       qs: 6.16.0
       url-template: 2.0.8
@@ -5439,7 +5439,7 @@ snapshots:
 
   googleapis@185.0.0(supports-color@8.1.1):
     dependencies:
-      google-auth-library: 11.2.0(supports-color@8.1.1)
+      google-auth-library: 11.3.0(supports-color@8.1.1)
       googleapis-common: 9.1.0(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
