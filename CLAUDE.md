@@ -24,7 +24,7 @@ pnpm test           # jest (--passWithNoTests つき)
 - `src/main.ts`: エントリーポイント(フォロー取得 → 誕生日抽出 → 出力 → 任意で Calendar 同期)
 - `src/auth-google.ts`: `pnpm auth:google` から呼ばれる Google OAuth2 認証フロー用エントリ
 - `src/core/`: ドメインロジック
-  - `following.ts`(フォロー一覧・誕生日抽出)、`output.ts`(JSON 出力)、`calendar-sync.ts`(Calendar への差分同期)
+  - `following.ts`(フォロー一覧・誕生日抽出。取得結果が完全なスナップショットかどうかを `complete` で返し、進捗ファイルの `snapshotComplete` に保存する)、`output.ts`(JSON 出力)、`calendar-sync.ts`(Calendar への差分同期。reconcile は `complete=false`・取得結果が空・削除候補が `SYNC_CALENDAR_RECONCILE_MAX_DELETIONS` 超過のいずれかなら削除をスキップする)
 - `src/infra/`: 外部連携層
   - `auth.ts`(Twitter ログイン)、`cycletls.ts`(TLS ラッパー)、`storage.ts`(ファイル I/O)、`calendar-client.ts` / `google-auth.ts`(Google Calendar)、`logger.ts`
 - `src/shared/`: `config.ts`(環境変数・設定読み込み)、`types.ts`、`retry.ts` / `google-retry.ts`(リトライ)
@@ -46,7 +46,8 @@ pnpm test           # jest (--passWithNoTests つき)
 ## テスト
 
 - フレームワークは Jest(`ts-jest`)、対象は `**/*.test.ts`
-- 現状テストファイルは存在せず、`pnpm test` は `--passWithNoTests` で通る。変更の動作確認は `pnpm lint`(型チェック含む)と `pnpm start` の手動実行で行う
+- テストは `src/core/following.test.ts`、`src/core/calendar-sync.test.ts`、`src/shared/config.test.ts` にある。外部 API はモックし、実ネットワークには接続しない
+- テストで覆っていない変更の動作確認は `pnpm lint`(型チェック含む)と `pnpm start` の手動実行で行う
 - テストを追加する場合は対象コードと同階層に `*.test.ts` を置く
 
 ## セキュリティ / 機密情報

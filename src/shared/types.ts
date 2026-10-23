@@ -50,6 +50,13 @@ export interface BirthdaysOutput {
   birthdays: BirthdayEntry[]
 }
 
+/** フォロー一覧取得の結果を表す。 */
+export interface FollowingFetchResult {
+  output: BirthdaysOutput
+  /** フォロー一覧を終端まで列挙でき、詳細取得も切り詰められていない場合は true */
+  complete: boolean
+}
+
 /** 進捗ファイルに保存するユーザー情報を表す。 */
 export interface ResumeUserEntry {
   id: string
@@ -69,6 +76,8 @@ export interface ResumeState {
   users: ResumeUserEntry[]
   missingBirthdateIds?: string[]
   detailBatchIndex?: number
+  /** 取得結果が完全なスナップショットであると証明できているか */
+  snapshotComplete?: boolean
 }
 
 /** APIレスポンス由来の誕生日情報を表す。 */

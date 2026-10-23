@@ -11,9 +11,18 @@ import {
   updateCalendarEvent,
 } from '../infra/calendar-client'
 import { loadCalendarEvents, saveCalendarEvents } from '../infra/storage'
-import { SYNC_CALENDAR_RECONCILE } from '../shared/config'
+import {
+  SYNC_CALENDAR_RECONCILE,
+  SYNC_CALENDAR_RECONCILE_MAX_DELETIONS,
+} from '../shared/config'
 
 type OAuth2Client = Auth.OAuth2Client
+
+/** 同期の実行条件を表す。 */
+export interface SyncOptions {
+  /** フォロー一覧が完全に取得できているか */
+  followingComplete: boolean
+}
 
 /**
  * イベント記録からユーザーを削除した新しいオブジェクトを返す。
@@ -53,6 +62,39 @@ function hasEventChanged(
 }
 
 /**
+ * reconcile による削除をスキップすべき理由を返す。
+ *
+ * 取得結果が完全なスナップショットと言えない場合や、削除件数が異常な場合に
+ * 既存イベントを失わないよう、削除は全件スキップする。
+ *
+ * @param candidateCount 削除候補の件数
+ * @param trackedCount 記録済みイベントの件数
+ * @param birthdayCount 今回取得した誕生日の件数
+ * @param followingComplete フォロー一覧が完全に取得できているか
+ * @returns スキップすべき場合はログに出す理由、削除してよい場合は undefined
+ */
+function getReconcileSkipReason(
+  candidateCount: number,
+  trackedCount: number,
+  birthdayCount: number,
+  followingComplete: boolean
+): string | undefined {
+  if (candidateCount === 0) {
+    return undefined
+  }
+  if (!followingComplete) {
+    return `フォロー一覧を完全に取得できていないため、削除をスキップします (削除候補: ${candidateCount} 件)`
+  }
+  if (birthdayCount === 0 && trackedCount > 0) {
+    return `取得した誕生日が 0 件のため、削除をスキップします (削除候補: ${candidateCount} 件)`
+  }
+  const maxDeletions = SYNC_CALENDAR_RECONCILE_MAX_DELETIONS
+  return maxDeletions > 0 && candidateCount > maxDeletions
+    ? `削除候補 ${candidateCount} 件が上限 ${maxDeletions} 件を超えるため、削除をスキップします。問題なければ SYNC_CALENDAR_RECONCILE_MAX_DELETIONS を引き上げて再実行してください`
+    : undefined
+}
+
+/**
  * 誕生日情報を Google Calendar に同期する。
  *
  * エラーが発生した場合でも、可能な限り他のユーザーの処理を継続します。
@@ -61,10 +103,12 @@ function hasEventChanged(
  *
  * @param oauth2Client 認証済みの OAuth2Client
  * @param birthdaysOutput 誕生日情報
+ * @param options 同期の実行条件
  */
 export async function syncToGoogleCalendar(
   oauth2Client: OAuth2Client,
-  birthdaysOutput: BirthdaysOutput
+  birthdaysOutput: BirthdaysOutput,
+  options: SyncOptions
 ): Promise<void> {
   console.log('📅 Google Calendar への同期を開始します...')
 
@@ -168,8 +212,18 @@ export async function syncToGoogleCalendar(
     const removedUserIds = Object.keys(events).filter(
       (userId) => !currentUserIds.has(userId)
     )
+    const skipReason = getReconcileSkipReason(
+      removedUserIds.length,
+      Object.keys(events).length,
+      birthdaysOutput.birthdays.length,
+      options.followingComplete
+    )
+    if (skipReason) {
+      console.warn(`  ⚠️ ${skipReason}`)
+    }
+    const deletionTargets = skipReason ? [] : removedUserIds
 
-    for (const userId of removedUserIds) {
+    for (const userId of deletionTargets) {
       const record = events[userId]
       try {
         await deleteCalendarEvent(oauth2Client, record.eventId)
