@@ -52,7 +52,7 @@ async function main(): Promise<number> {
       throw new Error('Failed to resolve current user id')
     }
 
-    const output = await fetchFollowingUsers(
+    const { output, complete } = await fetchFollowingUsers(
       client,
       currentUserId,
       credentials.username,
@@ -71,7 +71,9 @@ async function main(): Promise<number> {
       try {
         console.log()
         const oauth2Client = await authenticateGoogle()
-        await syncToGoogleCalendar(oauth2Client, output)
+        await syncToGoogleCalendar(oauth2Client, output, {
+          followingComplete: complete,
+        })
       } catch (error) {
         console.error('❌ Google Calendar 同期中にエラーが発生しました:', error)
         if (SYNC_CALENDAR_STRICT) {

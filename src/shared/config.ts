@@ -48,3 +48,15 @@ export function envNumber(name: string, fallback: number): number {
   const parsed = Number(raw)
   return Number.isNaN(parsed) ? fallback : parsed
 }
+
+const DEFAULT_RECONCILE_MAX_DELETIONS = 10
+const reconcileMaxDeletions = envNumber(
+  'SYNC_CALENDAR_RECONCILE_MAX_DELETIONS',
+  DEFAULT_RECONCILE_MAX_DELETIONS
+)
+
+/** reconcile で 1 回に削除を許可する最大件数 (0 = 無制限) */
+export const SYNC_CALENDAR_RECONCILE_MAX_DELETIONS =
+  Number.isFinite(reconcileMaxDeletions) && reconcileMaxDeletions >= 0
+    ? reconcileMaxDeletions
+    : DEFAULT_RECONCILE_MAX_DELETIONS

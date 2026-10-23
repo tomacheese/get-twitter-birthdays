@@ -170,6 +170,8 @@ docker run --rm -v "${PWD}/data:/data" get-twitter-birthdays
 - `GOOGLE_CALENDAR_ID` (既定: `primary`)
 - `SYNC_CALENDAR_STRICT=1` (同期失敗時に終了コード 1)
 - `SYNC_CALENDAR_RECONCILE=1` (削除されたユーザーのイベントも削除)
+  - フォロー一覧を完全に取得できなかった場合 (`MAX_FOLLOWING_PAGES` / `MAX_FOLLOWING_USERS` / `MAX_DETAIL_USERS` による打ち切りなど)、取得した誕生日が 0 件の場合、削除候補が上限を超える場合は、既存イベントを削除しません
+- `SYNC_CALENDAR_RECONCILE_MAX_DELETIONS` (既定: `10`。reconcile で 1 回に削除を許可する最大件数。削除候補がこれを超えると 1 件も削除しない。`0` = 無制限)
 
 ### 取得を調整するオプション
 

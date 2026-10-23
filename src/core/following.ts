@@ -10,7 +10,7 @@ import type {
   ApiBirthdate,
   ApiUser,
   BirthdateInfo,
-  BirthdaysOutput,
+  FollowingFetchResult,
   ResumeState,
   ResumeUserEntry,
 } from '../shared/types'
@@ -83,7 +83,7 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
  * @param sourceUser 対象ユーザー名
  * @param outputPath 出力ファイルのパス
  * @param progressPath 進捗ファイルのパス
- * @returns 誕生日出力
+ * @returns 誕生日出力と、取得結果が完全なスナップショットかどうか
  */
 export async function fetchFollowingUsers(
   client: TwitterClient,
@@ -91,7 +91,7 @@ export async function fetchFollowingUsers(
   sourceUser: string,
   outputPath: string,
   progressPath: string
-): Promise<BirthdaysOutput> {
+): Promise<FollowingFetchResult> {
   const usersById = new Map<string, ResumeUserEntry>()
 
   const progress = loadProgress(progressPath)
@@ -103,6 +103,7 @@ export async function fetchFollowingUsers(
   let missingBirthdateIds: string[] | undefined
   let detailBatchIndex = 0
   let birthdateLookupCount = 0
+  let snapshotComplete = false
   const enableBirthdateLookup = envFlag('PER_USER_BIRTHDATE_LOOKUP')
   const maxBirthdateLookup = envNumber('MAX_BIRTHDATE_LOOKUP', 0)
 
@@ -114,6 +115,7 @@ export async function fetchFollowingUsers(
     processedUsers = progress.processedUsers
     missingBirthdateIds = progress.missingBirthdateIds
     detailBatchIndex = progress.detailBatchIndex ?? 0
+    snapshotComplete = progress.snapshotComplete === true
     for (const user of progress.users) {
       usersById.set(user.id, user)
     }
@@ -138,6 +140,7 @@ export async function fetchFollowingUsers(
       processedUsers = 0
       missingBirthdateIds = undefined
       detailBatchIndex = 0
+      snapshotComplete = false
       usersById.clear()
       console.log('FORCE_FOLLOWING_REFRESH=1: restarting following fetch.')
     }
@@ -164,6 +167,7 @@ export async function fetchFollowingUsers(
     users: usersById.values().toArray(),
     missingBirthdateIds,
     detailBatchIndex: detailIndex,
+    snapshotComplete,
   })
 
   /**
@@ -250,6 +254,7 @@ export async function fetchFollowingUsers(
   }
 
   if (stage === 'following') {
+    snapshotComplete = false
     const maxUsers = envNumber('MAX_FOLLOWING_USERS', 0)
     const maxEmptyPages = envNumber('MAX_EMPTY_PAGES', DEFAULT_MAX_EMPTY_PAGES)
     if (maxUsers > 0 && processedUsers >= maxUsers) {
@@ -258,6 +263,7 @@ export async function fetchFollowingUsers(
       )
     } else {
       let emptyPages = 0
+      let rawEmptyStreak = 0
       while (true) {
         page += 1
         if (maxPages > 0 && page > maxPages) {
@@ -304,6 +310,9 @@ export async function fetchFollowingUsers(
           persistState('following')
         }
 
+        rawEmptyStreak =
+          following.data.data.length === 0 ? rawEmptyStreak + 1 : 0
+
         console.log(
           `Page ${page} done. Added ${addedThisPage} users. Total: ${usersById.size}.`
         )
@@ -314,6 +323,8 @@ export async function fetchFollowingUsers(
         if (addedThisPage === 0) {
           emptyPages += 1
           if (emptyPages >= maxEmptyPages) {
+            // 既出ユーザーだけのページが続いた場合は終端の証拠にならない
+            snapshotComplete = rawEmptyStreak >= emptyPages
             console.warn(
               `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`
             )
@@ -323,7 +334,11 @@ export async function fetchFollowingUsers(
           emptyPages = 0
         }
         const nextCursor = following.data.cursor.bottom?.value
-        if (!nextCursor || seenCursors.has(nextCursor)) {
+        if (!nextCursor) {
+          snapshotComplete = true
+          break
+        }
+        if (seenCursors.has(nextCursor)) {
           break
         }
         seenCursors.add(nextCursor)
@@ -341,6 +356,7 @@ export async function fetchFollowingUsers(
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
+      snapshotComplete = false
     }
     detailBatchIndex = 0
     persistProgress(stage, detailBatchIndex)
@@ -355,6 +371,7 @@ export async function fetchFollowingUsers(
     const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
     if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
       missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
+      snapshotComplete = false
     }
 
     if (missingBirthdateIds.length > 0) {
@@ -463,5 +480,8 @@ export async function fetchFollowingUsers(
     persistProgress(stage, chunkArray(missingBirthdateIds, BATCH_SIZE).length)
   }
 
-  return buildOutput(usersById, sourceUser)
+  return {
+    output: buildOutput(usersById, sourceUser),
+    complete: snapshotComplete,
+  }
 }
