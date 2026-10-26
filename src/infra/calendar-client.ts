@@ -9,19 +9,22 @@ import { withGoogleRetry } from '../shared/google-retry'
 type CalendarEvent = calendar_v3.Schema$Event
 type OAuth2Client = Auth.OAuth2Client
 
+// 年不明の 2 月 29 日が存在しない日付にならないよう、閏年を固定で使用する
+const UNKNOWN_YEAR_BASE = 2000
+
 /**
- * 誕生日情報から開始日と終了日を生成する（年不明の場合は現在年を使用）。
+ * 誕生日情報から開始日と終了日を生成する（年不明の場合は閏年の 2000 年を使用）。
  * Google Calendar API の終日イベントでは、end.date は排他的（翌日）を指定する。
  * タイムゾーンの影響を避けるため、Date オブジェクトを経由せずに直接文字列を生成する。
  *
  * @param birthdate 誕生日情報
  * @returns 開始日と終了日の YYYY-MM-DD 形式の文字列
  */
-function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
+export function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
   startDate: string
   endDate: string
 } {
-  const year = birthdate.year ?? new Date().getFullYear()
+  const year = birthdate.year ?? UNKNOWN_YEAR_BASE
   const month = String(birthdate.month).padStart(2, '0')
   const day = String(birthdate.day).padStart(2, '0')
 
