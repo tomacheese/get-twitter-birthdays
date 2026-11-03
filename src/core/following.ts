@@ -16,7 +16,7 @@ import type {
 } from '../shared/types'
 import { buildOutput, formatBirthdate } from './output'
 import { loadProgress, saveOutput, saveProgress } from '../infra/storage'
-import { getResponseStatus, withRetry } from '../shared/retry'
+import { withRetry } from '../shared/retry'
 
 export type TwitterClient = Awaited<
   ReturnType<TwitterOpenApi['getClientFromCookies']>
@@ -382,97 +382,44 @@ export async function fetchFollowingUsers(
         console.log(
           `Fetching user details batch ${batchIndex + 1}/${batches.length} (${batch.length} users)...`
         )
-        let detailResponse: Awaited<
-          ReturnType<
-            ReturnType<TwitterClient['getUsersApi']>['getUsersByRestIds']
-          >
-        > | null = null
-        try {
-          detailResponse = await withRetry(
+        for (const restId of batch) {
+          const current = usersById.get(restId)
+          if (!current) {
+            continue
+          }
+          const detail = await withRetry(
             () =>
-              client.getUsersApi().getUsersByRestIds({
-                userIds: batch,
-                extraParam: { withSafetyModeUserFields: true },
-              }),
+              client
+                .getUserApi()
+                .getUserByScreenName({ screenName: current.screenName }),
             {
               maxRetries: 3,
               baseDelayMs: 2000,
-              operationName: 'Fetch user details',
+              operationName: `Fetch user ${restId}`,
             }
           )
-        } catch (error) {
-          const status = getResponseStatus(error)
-          if (status === 403) {
-            console.warn(
-              'UsersByRestIds returned 403. Falling back to per-user fetch.'
-            )
-          } else {
-            throw error
+          const user = detail.data.user
+          if (!user) {
+            continue
           }
-        }
-
-        if (detailResponse) {
-          for (const detail of detailResponse.data) {
-            const user = detail.user
-            if (!user) {
-              continue
-            }
-            const entry = upsertUser(user, true)
-            if (!entry) {
-              continue
-            }
-            if (!entry.birthdate && canLookupBirthdate()) {
-              const lookupResult = await lookupBirthdate(entry.screenName)
-              if (lookupResult) {
-                entry.birthdate = lookupResult
-                usersById.set(entry.id, entry)
-              }
-            }
-            const birthdateText = entry.birthdate
-              ? formatBirthdate(entry.birthdate)
-              : 'none'
-            console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
-            )
-            persistState('details', batchIndex)
+          const entry = upsertUser(user, true)
+          if (!entry) {
+            continue
           }
-        } else {
-          for (const restId of batch) {
-            const current = usersById.get(restId)
-            if (!current) {
-              continue
+          if (!entry.birthdate && canLookupBirthdate()) {
+            const lookupResult = await lookupBirthdate(entry.screenName)
+            if (lookupResult) {
+              entry.birthdate = lookupResult
+              usersById.set(entry.id, entry)
             }
-            const detail = await withRetry(
-              () => client.getUserApi().getUserByRestId({ userId: restId }),
-              {
-                maxRetries: 3,
-                baseDelayMs: 2000,
-                operationName: `Fetch user ${restId}`,
-              }
-            )
-            const user = detail.data.user
-            if (!user) {
-              continue
-            }
-            const entry = upsertUser(user, true)
-            if (!entry) {
-              continue
-            }
-            if (!entry.birthdate && canLookupBirthdate()) {
-              const lookupResult = await lookupBirthdate(entry.screenName)
-              if (lookupResult) {
-                entry.birthdate = lookupResult
-                usersById.set(entry.id, entry)
-              }
-            }
-            const birthdateText = entry.birthdate
-              ? formatBirthdate(entry.birthdate)
-              : 'none'
-            console.log(
-              `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
-            )
-            persistState('details', batchIndex)
           }
+          const birthdateText = entry.birthdate
+            ? formatBirthdate(entry.birthdate)
+            : 'none'
+          console.log(
+            `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
+          )
+          persistState('details', batchIndex)
         }
       }
     }
