@@ -71,8 +71,8 @@ function makeClient(pages: PageSpec[], withBirthdate = true) {
   })
   const client = {
     getUserListApi: () => ({ getFollowing }),
-    getUsersApi: () => ({
-      getUsersByRestIds: () => Promise.resolve({ data: [] }),
+    getUserApi: () => ({
+      getUserByScreenName: () => Promise.resolve({ data: {} }),
     }),
   } as unknown as TwitterClient
   return { client, getFollowing }
