@@ -23,10 +23,10 @@ export type TwitterClient = Awaited<
 >
 
 /**
- * 配列を指定サイズで分割する。
- * @param items 元の配列
- * @param size 1チャンクあたりの件数
- * @returns 分割後の配列
+ * Splits an array into chunks of the given size.
+ * @param items Source array
+ * @param size Items per chunk
+ * @returns Chunks
  */
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = []
@@ -37,9 +37,9 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 /**
- * APIの誕生日情報を出力用の型に正規化する。
- * @param birthdate APIの誕生日情報
- * @returns 正規化した誕生日情報
+ * Normalizes an API birthdate into the output type.
+ * @param birthdate API birthdate
+ * @returns Normalized birthdate, or undefined if absent
  */
 function normalizeBirthdate(
   birthdate?: ApiBirthdate | null
@@ -56,9 +56,9 @@ function normalizeBirthdate(
 }
 
 /**
- * APIユーザー情報を進捗保存用の形式に変換する。
- * @param user APIユーザー情報
- * @returns 進捗保存用のユーザー情報
+ * Converts an API user into the progress-file format.
+ * @param user API user
+ * @returns Converted user, or null if the screen name or ID is missing
  */
 function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
   const legacy = user.legacy
@@ -77,13 +77,14 @@ function toResumeUserEntry(user: ApiUser): ResumeUserEntry | null {
 }
 
 /**
- * フォロー一覧と詳細情報を取得して誕生日出力を作成する。
- * @param client Twitter APIクライアント
- * @param userId 対象ユーザーID
- * @param sourceUser 対象ユーザー名
- * @param outputPath 出力ファイルのパス
- * @param progressPath 進捗ファイルのパス
- * @returns 誕生日出力と、取得結果が完全なスナップショットかどうか
+ * Fetches the following list and per-user details, and builds the birthdays output.
+ * Output and progress are saved as it goes, so an interrupted run resumes from the progress file.
+ * @param client Twitter API client
+ * @param userId ID of the user whose following list is fetched
+ * @param sourceUser Screen name of that user
+ * @param outputPath Output file path
+ * @param progressPath Progress file path
+ * @returns Birthdays output and whether it is a complete snapshot
  */
 export async function fetchFollowingUsers(
   client: TwitterClient,
@@ -149,10 +150,10 @@ export async function fetchFollowingUsers(
   const maxPages = envNumber('MAX_FOLLOWING_PAGES', 0)
 
   /**
-   * 進捗保存用の状態オブジェクトを構築する。
-   * @param stageValue 処理ステージ
-   * @param detailIndex 詳細取得のバッチ番号
-   * @returns 進捗状態
+   * Builds the progress state object.
+   * @param stageValue Processing stage
+   * @param detailIndex Index of the detail-fetch batch
+   * @returns Progress state
    */
   const buildProgressState = (
     stageValue: ResumeState['stage'],
@@ -171,9 +172,9 @@ export async function fetchFollowingUsers(
   })
 
   /**
-   * 進捗ファイルを保存する。
-   * @param stageValue 処理ステージ
-   * @param detailIndex 詳細取得のバッチ番号
+   * Saves the progress file.
+   * @param stageValue Processing stage
+   * @param detailIndex Index of the detail-fetch batch
    */
   const persistProgress = (
     stageValue: ResumeState['stage'],
@@ -183,9 +184,9 @@ export async function fetchFollowingUsers(
   }
 
   /**
-   * 出力と進捗をまとめて保存する。
-   * @param stageValue 処理ステージ
-   * @param detailIndex 詳細取得のバッチ番号
+   * Saves the output and the progress file.
+   * @param stageValue Processing stage
+   * @param detailIndex Index of the detail-fetch batch
    */
   const persistState = (
     stageValue: ResumeState['stage'],
@@ -196,17 +197,17 @@ export async function fetchFollowingUsers(
   }
 
   /**
-   * 追加の誕生日照会を実行可能か判定する。
-   * @returns 実行可能なら true
+   * Checks whether another per-user birthdate lookup is allowed.
+   * @returns True if allowed
    */
   const canLookupBirthdate = (): boolean =>
     enableBirthdateLookup &&
     (maxBirthdateLookup === 0 || birthdateLookupCount < maxBirthdateLookup)
 
   /**
-   * ユーザー単体APIで誕生日を再照会する。
-   * @param screenName 対象のスクリーンネーム
-   * @returns 誕生日情報
+   * Looks up a birthdate again through the single-user API.
+   * @param screenName Screen name
+   * @returns Birthdate info, if any
    */
   const lookupBirthdate = async (
     screenName: string
@@ -229,10 +230,10 @@ export async function fetchFollowingUsers(
   }
 
   /**
-   * 取得したユーザー情報を既存Mapに反映する。
-   * @param user APIユーザー情報
-   * @param requireExisting 既存エントリが必須かどうか
-   * @returns 更新後のユーザー情報
+   * Merges a fetched user into the existing map, keeping a known birthdate if the new data lacks one.
+   * @param user API user
+   * @param requireExisting If true, users not already in the map are ignored
+   * @returns The merged entry, or null if skipped
    */
   const upsertUser = (
     user: ApiUser,
@@ -323,7 +324,7 @@ export async function fetchFollowingUsers(
         if (addedThisPage === 0) {
           emptyPages += 1
           if (emptyPages >= maxEmptyPages) {
-            // 既出ユーザーだけのページが続いた場合は終端の証拠にならない
+            // Pages containing only already-seen users are not evidence that the list ended
             snapshotComplete = rawEmptyStreak >= emptyPages
             console.warn(
               `No new users for ${emptyPages} consecutive pages. Stopping following fetch.`

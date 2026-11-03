@@ -5,16 +5,14 @@ import { cycleTLSFetchWithProxy } from './cycletls'
 import { loadCachedCookies, saveCookies } from './storage'
 
 /**
- * ログイン処理をリトライしながら実行する。
- * @param scraper スクレイパー
- * @param username ユーザー名
- * @param password パスワード
- * @param email メールアドレス
- * @param twoFactorSecret 2要素認証シークレット
- * @param maxRetries 最大リトライ回数
- *
- * @remarks
- * 現状は 503 エラーのみリトライ対象とする。
+ * Logs in with exponential backoff.
+ * Only 503 errors are retried; any other error is rethrown immediately.
+ * @param scraper Scraper instance
+ * @param username Twitter username
+ * @param password Twitter password
+ * @param email Email address (used when Twitter asks for it)
+ * @param twoFactorSecret Two-factor authentication secret
+ * @param maxRetries Maximum number of attempts
  */
 async function loginWithRetry(
   scraper: Scraper,
@@ -47,9 +45,10 @@ async function loginWithRetry(
 }
 
 /**
- * 設定ファイルと環境変数から認証情報を組み立てる。
- * @param config 設定ファイル
- * @returns 認証情報
+ * Resolves credentials, preferring environment variables over the config file.
+ * @param config Config file contents, or null if absent
+ * @returns Credentials
+ * @throws If the username or password is missing
  */
 export function resolveCredentials(config: Config | null): Credentials {
   const username = process.env.TWITTER_USERNAME ?? config?.twitter?.username
@@ -74,9 +73,9 @@ export function resolveCredentials(config: Config | null): Credentials {
 }
 
 /**
- * ログイン済みCookieを取得し、必要なら保存する。
- * @param credentials 認証情報
- * @returns 認証Cookie
+ * Returns the auth cookies, using the cookie cache when valid and logging in otherwise.
+ * @param credentials Credentials
+ * @returns `auth_token` and `ct0` cookie values
  */
 export async function getAuthCookies(credentials: Credentials): Promise<{
   authToken: string

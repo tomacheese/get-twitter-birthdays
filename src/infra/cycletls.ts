@@ -7,8 +7,8 @@ import { writeResponseLog } from './logger'
 let cycleTLSInstancePromise: Promise<CycleTLSClient> | null = null
 
 /**
- * CycleTLSクライアントを初期化して取得する。
- * @returns CycleTLSクライアント
+ * Lazily initializes the shared CycleTLS client.
+ * @returns CycleTLS client
  */
 async function initCycleTLSWithProxy(): Promise<CycleTLSClient> {
   cycleTLSInstancePromise ??= initCycleTLS()
@@ -16,10 +16,11 @@ async function initCycleTLSWithProxy(): Promise<CycleTLSClient> {
 }
 
 /**
- * CycleTLS経由でHTTPリクエストを送信する。
- * @param input リクエストURL
- * @param init リクエストオプション
- * @returns レスポンス
+ * Sends an HTTP request through CycleTLS, with the optional proxy from `PROXY_*` environment variables.
+ * Used as the `fetch` implementation for both twitter-scraper and twitter-openapi-typescript.
+ * @param input Request URL
+ * @param init Request options
+ * @returns Response
  */
 export async function cycleTLSFetchWithProxy(
   input: RequestInfo | URL,
@@ -159,8 +160,7 @@ export async function cycleTLSFetchWithProxy(
 }
 
 /**
- * CycleTLSのリソースをクリーンアップする。
- * @returns なし
+ * Shuts down the CycleTLS client and the one held by twitter-scraper.
  */
 export async function cleanupCycleTLS(): Promise<void> {
   if (cycleTLSInstancePromise) {

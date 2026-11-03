@@ -1,9 +1,9 @@
 const ENV_NAME = 'SYNC_CALENDAR_RECONCILE_MAX_DELETIONS'
 
 /**
- * 環境変数を設定して config.ts を読み込み直し、削除上限を取得する。
- * @param value 設定する環境変数の値 (undefined の場合は未設定)
- * @returns 解決された削除上限
+ * Sets the environment variable, reloads config.ts, and returns the resolved deletion limit.
+ * @param value Value to set (unset when undefined)
+ * @returns Resolved deletion limit
  */
 function loadMaxDeletions(value: string | undefined): number {
   if (value === undefined) {
@@ -31,14 +31,17 @@ describe('SYNC_CALENDAR_RECONCILE_MAX_DELETIONS', () => {
   })
 
   it.each([
-    ['未設定', undefined, 10],
-    ['空文字', '', 10],
-    ['数値でない文字列', 'abc', 10],
-    ['負数', '-1', 10],
+    ['unset', undefined, 10],
+    ['an empty string', '', 10],
+    ['a non-numeric string', 'abc', 10],
+    ['a negative number', '-1', 10],
     ['Infinity', 'Infinity', 10],
-    ['0 (無制限)', '0', 0],
-    ['正の整数', '5', 5],
-  ])('%s のとき既定値または指定値に解決される', (_, value, expected) => {
-    expect(loadMaxDeletions(value)).toBe(expected)
-  })
+    ['0 (unlimited)', '0', 0],
+    ['a positive integer', '5', 5],
+  ])(
+    'resolves to the default or the given value when %s',
+    (_, value, expected) => {
+      expect(loadMaxDeletions(value)).toBe(expected)
+    }
+  )
 })

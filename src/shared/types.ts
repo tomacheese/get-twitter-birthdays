@@ -1,4 +1,4 @@
-/** 設定ファイルの構造を表す。 */
+/** Shape of the config file. */
 export interface Config {
   twitter?: {
     username?: string
@@ -7,7 +7,7 @@ export interface Config {
   }
 }
 
-/** 認証に必要な資格情報を表す。 */
+/** Credentials required to log in. */
 export interface Credentials {
   username: string
   password: string
@@ -15,14 +15,14 @@ export interface Credentials {
   twoFactorSecret?: string
 }
 
-/** ローカルに保存するCookieキャッシュの形式を表す。 */
+/** Shape of the locally cached cookies. */
 export interface CachedCookies {
   auth_token: string
   ct0: string
   savedAt: number
 }
 
-/** 誕生日情報の構造を表す。 */
+/** Birthdate info. */
 export interface BirthdateInfo {
   day: number
   month: number
@@ -31,7 +31,7 @@ export interface BirthdateInfo {
   yearVisibility: string
 }
 
-/** 誕生日一覧の1件分の出力構造を表す。 */
+/** One entry of the birthdays output. */
 export interface BirthdayEntry {
   id: string
   screenName: string
@@ -41,7 +41,7 @@ export interface BirthdayEntry {
   profileUrl: string
 }
 
-/** 出力JSON全体の構造を表す。 */
+/** Shape of the whole output JSON. */
 export interface BirthdaysOutput {
   generatedAt: string
   sourceUser: string
@@ -50,14 +50,14 @@ export interface BirthdaysOutput {
   birthdays: BirthdayEntry[]
 }
 
-/** フォロー一覧取得の結果を表す。 */
+/** Result of fetching the following list. */
 export interface FollowingFetchResult {
   output: BirthdaysOutput
-  /** フォロー一覧を終端まで列挙でき、詳細取得も切り詰められていない場合は true */
+  /** True if the following list was enumerated to its end and the detail fetch was not truncated */
   complete: boolean
 }
 
-/** 進捗ファイルに保存するユーザー情報を表す。 */
+/** User info stored in the progress file. */
 export interface ResumeUserEntry {
   id: string
   screenName: string
@@ -65,7 +65,7 @@ export interface ResumeUserEntry {
   birthdate?: BirthdateInfo
 }
 
-/** 進捗保存の状態構造を表す。 */
+/** State stored in the progress file. */
 export interface ResumeState {
   sourceUser: string
   stage: 'following' | 'details' | 'done'
@@ -76,11 +76,11 @@ export interface ResumeState {
   users: ResumeUserEntry[]
   missingBirthdateIds?: string[]
   detailBatchIndex?: number
-  /** 取得結果が完全なスナップショットであると証明できているか */
+  /** Whether the result is proven to be a complete snapshot */
   snapshotComplete?: boolean
 }
 
-/** APIレスポンス由来の誕生日情報を表す。 */
+/** Birthdate info as returned by the API. */
 export interface ApiBirthdate {
   day: number
   month: number
@@ -89,7 +89,7 @@ export interface ApiBirthdate {
   yearVisibility: string
 }
 
-/** APIレスポンス由来のユーザー情報を表す。 */
+/** User info as returned by the API. */
 export interface ApiUser {
   restId?: string
   id?: string
@@ -103,15 +103,15 @@ export interface ApiUser {
 }
 
 /**
- * Headers互換の最小インターフェースを表す。
- * undici の _Headers クラスや標準の Headers クラスに対応。
+ * Minimal Headers-compatible interface.
+ * Covers undici's `_Headers` and the standard `Headers`.
  */
 export interface HeadersLike {
   entries?: () => IterableIterator<[string, string]>
   [Symbol.iterator]?: () => Iterator<[string, string]>
 }
 
-/** Google OAuth 2.0 認証情報の構造を表す。 */
+/** Shape of the Google OAuth 2.0 credentials file. */
 export interface GoogleCredentials {
   installed: {
     client_id: string
@@ -124,7 +124,7 @@ export interface GoogleCredentials {
   }
 }
 
-/** Google OAuth 2.0 トークンの構造を表す。 */
+/** Shape of the Google OAuth 2.0 tokens. */
 export interface GoogleTokens {
   access_token: string
   refresh_token?: string
@@ -133,7 +133,7 @@ export interface GoogleTokens {
   expiry_date?: number
 }
 
-/** カレンダーイベント記録の1件分の構造を表す。 */
+/** One calendar event record. */
 export interface CalendarEventRecord {
   eventId: string
   userId: string
@@ -144,5 +144,5 @@ export interface CalendarEventRecord {
   updatedAt: string
 }
 
-/** カレンダーイベント記録全体の構造を表す（Record型）。 */
+/** All calendar event records, keyed by Twitter user ID. */
 export type CalendarEventsStorage = Record<string, CalendarEventRecord>

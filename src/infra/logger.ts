@@ -6,8 +6,8 @@ let responseLogDir: string | null = null
 let responseLogCounter = 0
 
 /**
- * レスポンスログ保存用のディレクトリを用意する。
- * @returns ディレクトリパス
+ * Creates (once) the timestamped directory for response logs.
+ * @returns Directory path, or null when response logging is disabled
  */
 function ensureResponseLogDir(): string | null {
   if (!RESPONSES_LOG_ENABLED) {
@@ -32,8 +32,8 @@ function ensureResponseLogDir(): string | null {
 }
 
 /**
- * HTTPレスポンスをファイルに保存する。
- * @param params 保存対象の情報
+ * Saves an HTTP response (metadata JSON plus raw body) when `RESPONSES_LOG_ENABLED=1`.
+ * @param params Response to save
  */
 export function writeResponseLog(params: {
   url: string

@@ -9,16 +9,16 @@ import { withGoogleRetry } from '../shared/google-retry'
 type CalendarEvent = calendar_v3.Schema$Event
 type OAuth2Client = Auth.OAuth2Client
 
-// 年不明の 2 月 29 日が存在しない日付にならないよう、閏年を固定で使用する
+// Use a fixed leap year so Feb 29 with an unknown year is always a valid date
 const UNKNOWN_YEAR_BASE = 2000
 
 /**
- * 誕生日情報から開始日と終了日を生成する（年不明の場合は閏年の 2000 年を使用）。
- * Google Calendar API の終日イベントでは、end.date は排他的（翌日）を指定する。
- * タイムゾーンの影響を避けるため、Date オブジェクトを経由せずに直接文字列を生成する。
+ * Builds the start and end dates of an all-day event from a birthdate (year 2000 when the year is unknown).
+ * The Google Calendar API treats an all-day event's `end.date` as exclusive, so the end date is the next day.
+ * Dates are built as strings rather than via Date objects to avoid time zone shifts.
  *
- * @param birthdate 誕生日情報
- * @returns 開始日と終了日の YYYY-MM-DD 形式の文字列
+ * @param birthdate Birthdate info
+ * @returns Start and end dates in YYYY-MM-DD format
  */
 export function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
   startDate: string
@@ -30,18 +30,16 @@ export function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
 
   const startDate = `${year}-${month}-${day}`
 
-  // 終了日は翌日（月をまたぐ場合や年をまたぐ場合を考慮）
+  // End date is the next day, rolling over month and year boundaries
   let endYear = year
   let endMonth = birthdate.month
   let endDay = birthdate.day + 1
 
-  // 月の最終日を超える場合
   const daysInMonth = new Date(year, birthdate.month, 0).getDate()
   if (endDay > daysInMonth) {
     endDay = 1
     endMonth++
 
-    // 12月31日の場合は翌年1月1日
     if (endMonth > 12) {
       endMonth = 1
       endYear++
@@ -57,15 +55,17 @@ export function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
 }
 
 /**
- * カレンダーイベントを作成する。
+ * Creates a yearly recurring all-day birthday event.
+ * The Twitter user ID is stored in the private extended property `twitterUserId`.
+ * The title is intentionally Japanese (`<name>(@<screenName>)の誕生日`) and is part of the user-visible calendar output.
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @param userId Twitter ユーザー ID
- * @param name 名前
- * @param screenName スクリーンネーム
- * @param birthdate 誕生日情報
- * @param profileUrl プロフィール URL
- * @returns 作成されたイベント ID
+ * @param oauth2Client Authenticated OAuth2Client
+ * @param userId Twitter user ID
+ * @param name Display name
+ * @param screenName Screen name
+ * @param birthdate Birthdate info
+ * @param profileUrl Profile URL
+ * @returns Created event ID
  */
 export async function createCalendarEvent(
   oauth2Client: OAuth2Client,
@@ -103,22 +103,22 @@ export async function createCalendarEvent(
   })
 
   if (!response.data.id) {
-    throw new Error('❌ イベント ID が取得できませんでした')
+    throw new Error('❌ Failed to get the event ID')
   }
 
   return response.data.id
 }
 
 /**
- * カレンダーイベントを更新する。
+ * Replaces an existing birthday event with the current user info.
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @param eventId イベント ID
- * @param userId Twitter ユーザー ID
- * @param name 名前
- * @param screenName スクリーンネーム
- * @param birthdate 誕生日情報
- * @param profileUrl プロフィール URL
+ * @param oauth2Client Authenticated OAuth2Client
+ * @param eventId Event ID
+ * @param userId Twitter user ID
+ * @param name Display name
+ * @param screenName Screen name
+ * @param birthdate Birthdate info
+ * @param profileUrl Profile URL
  */
 export async function updateCalendarEvent(
   oauth2Client: OAuth2Client,
@@ -159,10 +159,10 @@ export async function updateCalendarEvent(
 }
 
 /**
- * カレンダーイベントを削除する。
+ * Deletes a calendar event.
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @param eventId イベント ID
+ * @param oauth2Client Authenticated OAuth2Client
+ * @param eventId Event ID
  */
 export async function deleteCalendarEvent(
   oauth2Client: OAuth2Client,
@@ -179,15 +179,13 @@ export async function deleteCalendarEvent(
 }
 
 /**
- * カレンダーから特定の extendedProperties を持つイベントを検索する。
+ * Finds the event whose `twitterUserId` extended property matches the user.
  *
- * 注: この関数は現在使用されていませんが、将来的にローカルストレージが失われた場合や
- * 手動でのリカバリー操作を行う際に、Google Calendar から既存のイベントを検索するために
- * 使用される可能性があります。
+ * Currently unused. May be used in the future for manual recovery.
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @param userId Twitter ユーザー ID
- * @returns イベント ID（見つからない場合は null）
+ * @param oauth2Client Authenticated OAuth2Client
+ * @param userId Twitter user ID
+ * @returns Event ID, or null if not found
  */
 export async function findEventByUserId(
   oauth2Client: OAuth2Client,

@@ -1,8 +1,9 @@
 /**
- * 指定処理をリトライしながら実行する。
- * @param fn 実行する非同期処理
- * @param options リトライ設定
- * @returns 処理結果
+ * Runs an async operation with retries and exponential backoff.
+ * On 429/403 with an `x-rate-limit-reset` header it waits until the reset time without consuming a retry.
+ * @param fn Operation to run
+ * @param options Retry settings
+ * @returns Result of the operation
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
@@ -69,9 +70,9 @@ export async function withRetry<T>(
 }
 
 /**
- * 例外オブジェクトからHTTPステータスを取り出す。
- * @param error 例外オブジェクト
- * @returns HTTPステータス
+ * Extracts the HTTP status from an error that carries a `response`.
+ * @param error Thrown value
+ * @returns HTTP status, if any
  */
 export function getResponseStatus(error: unknown): number | undefined {
   return (error as { response?: Response }).response?.status

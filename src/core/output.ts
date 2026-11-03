@@ -6,9 +6,9 @@ import type {
 } from '../shared/types'
 
 /**
- * 誕生日情報を表示用の文字列に整形する。
- * @param birthdate 誕生日情報
- * @returns 表示用文字列
+ * Formats a birthdate as `YYYY-MM-DD`, or `MM-DD` when the year is unknown.
+ * @param birthdate Birthdate info
+ * @returns Formatted text
  */
 export function formatBirthdate(birthdate: BirthdateInfo): string {
   const month = String(birthdate.month).padStart(2, '0')
@@ -19,10 +19,11 @@ export function formatBirthdate(birthdate: BirthdateInfo): string {
 }
 
 /**
- * 取得済みユーザーから出力JSONを構築する。
- * @param usersById ユーザー情報のMap
- * @param sourceUser 取得元のユーザー名
- * @returns 出力JSON
+ * Builds the output JSON from the collected users.
+ * Users without a birthdate are omitted from `birthdays`, which is sorted by month, day, then screen name.
+ * @param usersById Collected users keyed by user ID
+ * @param sourceUser Screen name of the account whose following list was fetched
+ * @returns Output JSON
  */
 export function buildOutput(
   usersById: Map<string, ResumeUserEntry>,

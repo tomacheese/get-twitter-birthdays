@@ -19,8 +19,8 @@ import type {
 } from '../shared/types'
 
 /**
- * 出力先ディレクトリが存在することを保証する。
- * @param outputPath 出力ファイルのパス
+ * Creates the parent directory of a file path if it does not exist.
+ * @param outputPath File path
  */
 export function ensureOutputDir(outputPath: string): void {
   const outDir = path.dirname(outputPath)
@@ -30,9 +30,9 @@ export function ensureOutputDir(outputPath: string): void {
 }
 
 /**
- * 誕生日の出力JSONを保存する。
- * @param outputPath 出力ファイルのパス
- * @param output 出力内容
+ * Saves the birthdays output JSON.
+ * @param outputPath Output file path
+ * @param output Output contents
  */
 export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
   ensureOutputDir(outputPath)
@@ -40,9 +40,9 @@ export function saveOutput(outputPath: string, output: BirthdaysOutput): void {
 }
 
 /**
- * 進捗ファイルを保存する。
- * @param progressPath 進捗ファイルのパス
- * @param state 進捗状態
+ * Saves the progress file.
+ * @param progressPath Progress file path
+ * @param state Progress state
  */
 export function saveProgress(progressPath: string, state: ResumeState): void {
   ensureOutputDir(progressPath)
@@ -50,9 +50,9 @@ export function saveProgress(progressPath: string, state: ResumeState): void {
 }
 
 /**
- * 進捗ファイルを読み込む。
- * @param progressPath 進捗ファイルのパス
- * @returns 進捗状態
+ * Loads the progress file.
+ * @param progressPath Progress file path
+ * @returns Progress state, or null if missing or unreadable
  */
 export function loadProgress(progressPath: string): ResumeState | null {
   if (!fs.existsSync(progressPath)) {
@@ -68,8 +68,8 @@ export function loadProgress(progressPath: string): ResumeState | null {
 }
 
 /**
- * 設定ファイルを読み込む。
- * @returns 設定情報
+ * Loads the config file.
+ * @returns Config, or null if the file does not exist
  */
 export function loadConfig(): Config | null {
   if (!fs.existsSync(CONFIG_PATH)) {
@@ -80,9 +80,9 @@ export function loadConfig(): Config | null {
 }
 
 /**
- * Cookieキャッシュの構造が正しいか判定する。
- * @param data 読み込んだデータ
- * @returns 正しい場合は true
+ * Checks that parsed data has the cookie cache shape.
+ * @param data Parsed data
+ * @returns True if valid
  */
 function isValidCachedCookies(data: unknown): data is CachedCookies {
   if (typeof data !== 'object' || data === null) {
@@ -97,8 +97,8 @@ function isValidCachedCookies(data: unknown): data is CachedCookies {
 }
 
 /**
- * Cookieキャッシュを読み込む。
- * @returns Cookieキャッシュ
+ * Loads the cookie cache.
+ * @returns Cached cookies, or null if missing, invalid, or older than `COOKIE_EXPIRY_DAYS`
  */
 export function loadCachedCookies(): CachedCookies | null {
   try {
@@ -119,9 +119,9 @@ export function loadCachedCookies(): CachedCookies | null {
 }
 
 /**
- * Cookieキャッシュを保存する。
- * @param authToken 認証トークン
- * @param ct0 CSRFトークン
+ * Saves the cookie cache.
+ * @param authToken `auth_token` cookie value
+ * @param ct0 `ct0` (CSRF token) cookie value
  */
 export function saveCookies(authToken: string, ct0: string): void {
   const dir = path.dirname(COOKIE_CACHE_FILE)
@@ -137,8 +137,8 @@ export function saveCookies(authToken: string, ct0: string): void {
 }
 
 /**
- * Google 認証情報ファイルを読み込む。
- * @returns Google 認証情報
+ * Loads the Google credentials file.
+ * @returns Google credentials, or null if missing or unreadable
  */
 export function loadGoogleCredentials(): GoogleCredentials | null {
   if (!fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
@@ -148,14 +148,14 @@ export function loadGoogleCredentials(): GoogleCredentials | null {
     const raw = fs.readFileSync(GOOGLE_CREDENTIALS_PATH, 'utf8')
     return JSON.parse(raw) as GoogleCredentials
   } catch (error) {
-    console.warn('⚠️ Google 認証情報ファイルの読み込みに失敗しました', error)
+    console.warn('⚠️ Failed to load the Google credentials file', error)
     return null
   }
 }
 
 /**
- * Google トークンキャッシュを読み込む。
- * @returns Google トークン
+ * Loads the Google token cache.
+ * @returns Google tokens, or null if missing or unreadable
  */
 export function loadGoogleTokens(): GoogleTokens | null {
   if (!fs.existsSync(GOOGLE_TOKEN_CACHE_PATH)) {
@@ -165,14 +165,14 @@ export function loadGoogleTokens(): GoogleTokens | null {
     const raw = fs.readFileSync(GOOGLE_TOKEN_CACHE_PATH, 'utf8')
     return JSON.parse(raw) as GoogleTokens
   } catch (error) {
-    console.warn('⚠️ Google トークンキャッシュの読み込みに失敗しました', error)
+    console.warn('⚠️ Failed to load the Google token cache', error)
     return null
   }
 }
 
 /**
- * Google トークンを保存する。
- * @param tokens Google トークン
+ * Saves the Google tokens.
+ * @param tokens Google tokens
  */
 export function saveGoogleTokens(tokens: GoogleTokens): void {
   ensureOutputDir(GOOGLE_TOKEN_CACHE_PATH)
@@ -180,8 +180,8 @@ export function saveGoogleTokens(tokens: GoogleTokens): void {
 }
 
 /**
- * カレンダーイベント記録を読み込む。
- * @returns カレンダーイベント記録
+ * Loads the calendar event records.
+ * @returns Event records keyed by user ID (empty if missing or unreadable)
  */
 export function loadCalendarEvents(): CalendarEventsStorage {
   if (!fs.existsSync(CALENDAR_EVENTS_PATH)) {
@@ -191,14 +191,14 @@ export function loadCalendarEvents(): CalendarEventsStorage {
     const raw = fs.readFileSync(CALENDAR_EVENTS_PATH, 'utf8')
     return JSON.parse(raw) as CalendarEventsStorage
   } catch (error) {
-    console.warn('⚠️ カレンダーイベント記録の読み込みに失敗しました', error)
+    console.warn('⚠️ Failed to load the calendar event records', error)
     return {}
   }
 }
 
 /**
- * カレンダーイベント記録を保存する。
- * @param events カレンダーイベント記録
+ * Saves the calendar event records.
+ * @param events Event records keyed by user ID
  */
 export function saveCalendarEvents(events: CalendarEventsStorage): void {
   ensureOutputDir(CALENDAR_EVENTS_PATH)
