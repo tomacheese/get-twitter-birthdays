@@ -15,8 +15,8 @@ import { authenticateGoogle } from './infra/google-auth'
 import { syncToGoogleCalendar } from './core/calendar-sync'
 
 /**
- * CLIのエントリポイント。
- * @returns 終了コード
+ * CLI entry point: fetches following users and birthdays, writes the output, then optionally syncs to Google Calendar.
+ * @returns Process exit code
  */
 async function main(): Promise<number> {
   let exitCode = 0
@@ -66,7 +66,7 @@ async function main(): Promise<number> {
     )
     console.log(`Saved to ${OUTPUT_PATH}`)
 
-    // Google Calendar 同期（認証情報があれば自動実行）
+    // Sync to Google Calendar when the credentials file exists
     if (fs.existsSync(GOOGLE_CREDENTIALS_PATH)) {
       try {
         console.log()
@@ -75,7 +75,10 @@ async function main(): Promise<number> {
           followingComplete: complete,
         })
       } catch (error) {
-        console.error('❌ Google Calendar 同期中にエラーが発生しました:', error)
+        console.error(
+          '❌ An error occurred during Google Calendar sync:',
+          error
+        )
         if (SYNC_CALENDAR_STRICT) {
           exitCode = 1
         }

@@ -18,18 +18,18 @@ import {
 
 type OAuth2Client = Auth.OAuth2Client
 
-/** 同期の実行条件を表す。 */
+/** Conditions for a sync run. */
 export interface SyncOptions {
-  /** フォロー一覧が完全に取得できているか */
+  /** Whether the following list was fetched completely */
   followingComplete: boolean
 }
 
 /**
- * イベント記録からユーザーを削除した新しいオブジェクトを返す。
+ * Returns a copy of the event records without the given user.
  *
- * @param events イベント記録
- * @param userId 削除するユーザー ID
- * @returns 新しいイベント記録
+ * @param events Event records
+ * @param userId User ID to remove
+ * @returns New event records
  */
 function removeEventByUserId(
   events: CalendarEventsStorage,
@@ -41,11 +41,11 @@ function removeEventByUserId(
 }
 
 /**
- * イベント記録が変更されたかどうかを判定する。
+ * Checks whether a recorded event differs from the current birthday entry.
  *
- * @param record 既存のイベント記録
- * @param entry 誕生日エントリ
- * @returns 変更があった場合は true
+ * @param record Existing event record
+ * @param entry Birthday entry
+ * @returns True if changed
  */
 function hasEventChanged(
   record: CalendarEventRecord,
@@ -62,16 +62,16 @@ function hasEventChanged(
 }
 
 /**
- * reconcile による削除をスキップすべき理由を返す。
+ * Returns why reconcile deletions must be skipped, if they must.
  *
- * 取得結果が完全なスナップショットと言えない場合や、削除件数が異常な場合に
- * 既存イベントを失わないよう、削除は全件スキップする。
+ * When the fetched data cannot be trusted as a complete snapshot, or the number of deletions looks abnormal,
+ * all deletions are skipped so that existing events are not lost.
  *
- * @param candidateCount 削除候補の件数
- * @param trackedCount 記録済みイベントの件数
- * @param birthdayCount 今回取得した誕生日の件数
- * @param followingComplete フォロー一覧が完全に取得できているか
- * @returns スキップすべき場合はログに出す理由、削除してよい場合は undefined
+ * @param candidateCount Number of deletion candidates
+ * @param trackedCount Number of recorded events
+ * @param birthdayCount Number of birthdays fetched in this run
+ * @param followingComplete Whether the following list was fetched completely
+ * @returns Message to log when deletions must be skipped, or undefined when they are allowed
  */
 function getReconcileSkipReason(
   candidateCount: number,
@@ -83,34 +83,33 @@ function getReconcileSkipReason(
     return undefined
   }
   if (!followingComplete) {
-    return `フォロー一覧を完全に取得できていないため、削除をスキップします (削除候補: ${candidateCount} 件)`
+    return `Skipping deletions because the following list was not fetched completely (candidates: ${candidateCount})`
   }
   if (birthdayCount === 0 && trackedCount > 0) {
-    return `取得した誕生日が 0 件のため、削除をスキップします (削除候補: ${candidateCount} 件)`
+    return `Skipping deletions because no birthdays were fetched (candidates: ${candidateCount})`
   }
   const maxDeletions = SYNC_CALENDAR_RECONCILE_MAX_DELETIONS
   return maxDeletions > 0 && candidateCount > maxDeletions
-    ? `削除候補 ${candidateCount} 件が上限 ${maxDeletions} 件を超えるため、削除をスキップします。問題なければ SYNC_CALENDAR_RECONCILE_MAX_DELETIONS を引き上げて再実行してください`
+    ? `Skipping deletions because ${candidateCount} candidates exceed the limit of ${maxDeletions}. If this is expected, raise SYNC_CALENDAR_RECONCILE_MAX_DELETIONS and run again`
     : undefined
 }
 
 /**
- * 誕生日情報を Google Calendar に同期する。
+ * Syncs birthdays to Google Calendar.
  *
- * エラーが発生した場合でも、可能な限り他のユーザーの処理を継続します。
- * また、各イベントの作成・更新後にストレージを保存することで、途中でクラッシュしても
- * 既に作成されたイベントは記録されます。
+ * Per-user failures are collected and processing continues with the other users; an error is thrown at the end if any failed.
+ * The event records are saved after every create/update/delete, so events created before a crash are not created again.
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @param birthdaysOutput 誕生日情報
- * @param options 同期の実行条件
+ * @param oauth2Client Authenticated OAuth2Client
+ * @param birthdaysOutput Birthdays to sync
+ * @param options Sync conditions
  */
 export async function syncToGoogleCalendar(
   oauth2Client: OAuth2Client,
   birthdaysOutput: BirthdaysOutput,
   options: SyncOptions
 ): Promise<void> {
-  console.log('📅 Google Calendar への同期を開始します...')
+  console.log('📅 Starting Google Calendar sync...')
 
   let events = loadCalendarEvents()
   const currentUserIds = new Set(birthdaysOutput.birthdays.map((b) => b.id))
@@ -120,13 +119,12 @@ export async function syncToGoogleCalendar(
   let deleted = 0
   const errors: { user: string; error: unknown }[] = []
 
-  // 新規作成 or 更新
+  // Create or update
   for (const entry of birthdaysOutput.birthdays) {
     const existingEvent = events[entry.id]
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!existingEvent) {
-      // 新規作成
       try {
         const eventId = await createCalendarEvent(
           oauth2Client,
@@ -147,24 +145,22 @@ export async function syncToGoogleCalendar(
           updatedAt: new Date().toISOString(),
         }
 
-        // イベント作成後すぐにストレージを保存（クラッシュ時の重複防止）
+        // Save right after creating the event to avoid duplicates after a crash
         saveCalendarEvents(events)
 
-        console.log(`  ✅ 作成: ${entry.name}(@${entry.screenName})`)
+        console.log(`  ✅ Created: ${entry.name}(@${entry.screenName})`)
         created++
       } catch (error) {
         console.error(
-          `  ❌ 作成失敗: ${entry.name}(@${entry.screenName})`,
+          `  ❌ Failed to create: ${entry.name}(@${entry.screenName})`,
           error
         )
         errors.push({
           user: `${entry.name}(@${entry.screenName})`,
           error,
         })
-        // エラーを記録して次のユーザーの処理を継続
       }
     } else if (hasEventChanged(existingEvent, entry)) {
-      // 更新
       try {
         await updateCalendarEvent(
           oauth2Client,
@@ -185,29 +181,27 @@ export async function syncToGoogleCalendar(
           updatedAt: new Date().toISOString(),
         }
 
-        // イベント更新後すぐにストレージを保存（クラッシュ時の重複防止）
+        // Save right after updating the event so the record never lags behind the calendar
         saveCalendarEvents(events)
 
-        console.log(`  🔄 更新: ${entry.name}(@${entry.screenName})`)
+        console.log(`  🔄 Updated: ${entry.name}(@${entry.screenName})`)
         updated++
       } catch (error) {
         console.error(
-          `  ❌ 更新失敗: ${entry.name}(@${entry.screenName})`,
+          `  ❌ Failed to update: ${entry.name}(@${entry.screenName})`,
           error
         )
         errors.push({
           user: `${entry.name}(@${entry.screenName})`,
           error,
         })
-        // エラーを記録して次のユーザーの処理を継続
       }
     } else {
-      // 変更なし
       skipped++
     }
   }
 
-  // Reconcile: カレンダーから削除されたユーザーを検出して削除
+  // Reconcile: delete events of users that are no longer in the birthdays
   if (SYNC_CALENDAR_RECONCILE) {
     const removedUserIds = Object.keys(events).filter(
       (userId) => !currentUserIds.has(userId)
@@ -229,45 +223,41 @@ export async function syncToGoogleCalendar(
         await deleteCalendarEvent(oauth2Client, record.eventId)
         events = removeEventByUserId(events, userId)
 
-        // イベント削除後すぐにストレージを保存
         saveCalendarEvents(events)
 
-        console.log(`  🗑️  削除: ${record.name}(@${record.screenName})`)
+        console.log(`  🗑️  Deleted: ${record.name}(@${record.screenName})`)
         deleted++
       } catch (error) {
         console.error(
-          `  ❌ 削除失敗: ${record.name}(@${record.screenName})`,
+          `  ❌ Failed to delete: ${record.name}(@${record.screenName})`,
           error
         )
         errors.push({
           user: `${record.name}(@${record.screenName})`,
           error,
         })
-        // 削除失敗は続行
       }
     }
   }
 
-  // 最終的にもう一度保存（念のため）
   saveCalendarEvents(events)
 
   console.log()
-  console.log('✅ 同期が完了しました')
+  console.log('✅ Sync completed')
   console.log(
-    `  📊 作成: ${created}, 更新: ${updated}, スキップ: ${skipped}, 削除: ${deleted}`
+    `  📊 Created: ${created}, updated: ${updated}, skipped: ${skipped}, deleted: ${deleted}`
   )
 
-  // エラーがあった場合は集計して報告
   if (errors.length === 0) {
     return
   }
 
   console.log()
-  console.log(`⚠️ ${errors.length} 件のエラーが発生しました:`)
+  console.log(`⚠️ ${errors.length} error(s) occurred:`)
   for (const { user, error } of errors) {
     console.log(
       `  - ${user}: ${error instanceof Error ? error.message : String(error)}`
     )
   }
-  throw new Error(`❌ ${errors.length} 件のユーザーで同期に失敗しました`)
+  throw new Error(`❌ Sync failed for ${errors.length} user(s)`)
 }

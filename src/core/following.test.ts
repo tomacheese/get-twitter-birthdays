@@ -26,10 +26,10 @@ interface PageSpec {
 }
 
 /**
- * テスト用の API ユーザーを作る。
- * @param id ユーザー ID
- * @param withBirthdate 誕生日を持たせるか
- * @returns API ユーザー
+ * Creates an API user for tests.
+ * @param id User ID
+ * @param withBirthdate Whether the user has a birthdate
+ * @returns API user
  */
 function makeUser(id: string, withBirthdate: boolean): ApiUser {
   return {
@@ -49,11 +49,11 @@ function makeUser(id: string, withBirthdate: boolean): ApiUser {
 }
 
 /**
- * ページ定義から Twitter クライアントのモックを作る。
- * 定義を使い切った後は、カーソル付きの空ページを返し続ける。
- * @param pages ページ定義
- * @param withBirthdate ユーザーに誕生日を持たせるか
- * @returns クライアントと getFollowing のモック
+ * Creates a mock Twitter client from page specs.
+ * After the specs are exhausted, it keeps returning empty pages that still carry a cursor.
+ * @param pages Page specs
+ * @param withBirthdate Whether users have a birthdate
+ * @returns The client and the `getFollowing` mock
  */
 function makeClient(pages: PageSpec[], withBirthdate = true) {
   let index = 0
@@ -79,9 +79,9 @@ function makeClient(pages: PageSpec[], withBirthdate = true) {
 }
 
 /**
- * テスト用の進捗状態を作る。
- * @param overrides 上書きする項目
- * @returns 進捗状態
+ * Creates a progress state for tests.
+ * @param overrides Fields to override
+ * @returns Progress state
  */
 function makeProgress(overrides: Partial<ResumeState>): ResumeState {
   return {
@@ -97,9 +97,9 @@ function makeProgress(overrides: Partial<ResumeState>): ResumeState {
 }
 
 /**
- * フォロー一覧を取得する。
- * @param client Twitter クライアント
- * @returns 取得結果
+ * Runs `fetchFollowingUsers` against the mock client.
+ * @param client Twitter client
+ * @returns Fetch result
  */
 function run(client: TwitterClient) {
   return fetchFollowingUsers(
@@ -137,7 +137,7 @@ describe('fetchFollowingUsers complete', () => {
     jest.restoreAllMocks()
   })
 
-  it('最終ページで次カーソルが返らなければ完全', async () => {
+  it('is complete when the last page returns no next cursor', async () => {
     const { client } = makeClient([
       { users: ['1', '2'], nextCursor: 'c1' },
       { users: ['3'] },
@@ -149,7 +149,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.output.totalFollowing).toBe(3)
   })
 
-  it('MAX_FOLLOWING_PAGES で打ち切ると不完全', async () => {
+  it('is incomplete when stopped by MAX_FOLLOWING_PAGES', async () => {
     process.env.MAX_FOLLOWING_PAGES = '1'
     const { client, getFollowing } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
@@ -163,7 +163,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.output.totalFollowing).toBe(1)
   })
 
-  it('MAX_FOLLOWING_USERS で打ち切ると不完全', async () => {
+  it('is incomplete when stopped by MAX_FOLLOWING_USERS', async () => {
     process.env.MAX_FOLLOWING_USERS = '2'
     const { client } = makeClient([
       { users: ['1', '2'], nextCursor: 'c1' },
@@ -176,7 +176,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.output.totalFollowing).toBe(2)
   })
 
-  it('最終ページ (次カーソルなし) で MAX_FOLLOWING_USERS にも達すると不完全', async () => {
+  it('is incomplete when the last page (no next cursor) also reaches MAX_FOLLOWING_USERS', async () => {
     process.env.MAX_FOLLOWING_USERS = '2'
     const { client } = makeClient([{ users: ['1', '2'] }])
 
@@ -185,7 +185,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('追加ゼロかつ API 上も空のページが連続して終了すると完全', async () => {
+  it('is complete when it stops after consecutive pages that are empty in the API too', async () => {
     const { client, getFollowing } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
     ])
@@ -196,7 +196,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(true)
   })
 
-  it('既出ユーザーだけで追加ゼロのページが連続して終了すると不完全', async () => {
+  it('is incomplete when it stops after consecutive pages that add nothing because they only contain seen users', async () => {
     const { client, getFollowing } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
       { users: ['1'], nextCursor: 'c2' },
@@ -210,7 +210,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('空ページ連続の途中に既出ユーザーのページが挟まると不完全', async () => {
+  it('is incomplete when a page of seen users interrupts a streak of empty pages', async () => {
     process.env.MAX_EMPTY_PAGES = '2'
     const { client } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
@@ -223,7 +223,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('カーソルが循環すると不完全', async () => {
+  it('is incomplete when the cursor loops', async () => {
     const { client, getFollowing } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
       { users: ['2'], nextCursor: 'c1' },
@@ -235,7 +235,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('MAX_DETAIL_USERS による切り詰めが発生すると不完全', async () => {
+  it('is incomplete when MAX_DETAIL_USERS truncates the detail fetch', async () => {
     process.env.MAX_DETAIL_USERS = '1'
     const { client } = makeClient([{ users: ['1', '2', '3'] }], false)
 
@@ -244,7 +244,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('MAX_DETAIL_USERS 以内で切り詰めが発生しなければ完全のまま', async () => {
+  it('stays complete when MAX_DETAIL_USERS does not truncate', async () => {
     process.env.MAX_DETAIL_USERS = '5'
     const { client } = makeClient([{ users: ['1', '2', '3'] }], false)
 
@@ -256,10 +256,10 @@ describe('fetchFollowingUsers complete', () => {
   it.each([
     ['true', true, true],
     ['false', false, false],
-    ['未定義', undefined, false],
-    ['boolean 以外', 'yes' as unknown as boolean, false],
+    ['undefined', undefined, false],
+    ['not a boolean', 'yes' as unknown as boolean, false],
   ])(
-    '進捗の snapshotComplete が %s のとき details 再開で complete=%s を引き継ぐ',
+    'carries over completeness when resuming at details with snapshotComplete %s',
     async (_, saved, expected) => {
       jest
         .mocked(loadProgress)
@@ -273,7 +273,7 @@ describe('fetchFollowingUsers complete', () => {
     }
   )
 
-  it('FORCE_FOLLOWING_REFRESH=1 では進捗の完全性を引き継がず取得結果で判定する', async () => {
+  it('ignores the saved completeness and judges by the new fetch with FORCE_FOLLOWING_REFRESH=1', async () => {
     process.env.FORCE_FOLLOWING_REFRESH = '1'
     process.env.MAX_FOLLOWING_PAGES = '1'
     jest.mocked(loadProgress).mockReturnValue(
@@ -293,7 +293,7 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
-  it('進捗保存に snapshotComplete が含まれ、完全取得後は true になる', async () => {
+  it('saves snapshotComplete in the progress file, true after a complete fetch', async () => {
     const { client } = makeClient([
       { users: ['1'], nextCursor: 'c1' },
       { users: ['2'] },

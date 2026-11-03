@@ -1,5 +1,5 @@
 /**
- * GaxiosError 互換のエラー型を表す。
+ * Error shape compatible with GaxiosError.
  */
 interface GaxiosErrorLike extends Error {
   code?: string
@@ -10,28 +10,24 @@ interface GaxiosErrorLike extends Error {
 }
 
 /**
- * Google API のエラーがリトライ可能かどうかを判定する。
+ * Determines whether a Google API error is retryable (429, 5xx, or a network error).
  *
- * @param error エラーオブジェクト
- * @returns リトライ可能な場合は true
+ * @param error Thrown value
+ * @returns True if retryable
  */
 function isRetryableGoogleError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false
   }
 
-  // GaxiosError の場合
   if ('code' in error && typeof error.code === 'string') {
-    // typeof error.code === 'string' で絞り込み済みのため code を string として扱う
     const gaxiosError = error as GaxiosErrorLike & { code: string }
     const status = gaxiosError.response?.status
 
-    // レートリミットまたはサーバーエラー
     if (status === 429 || (status && status >= 500)) {
       return true
     }
 
-    // ネットワークエラー
     if (['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(gaxiosError.code)) {
       return true
     }
@@ -41,14 +37,13 @@ function isRetryableGoogleError(error: unknown): boolean {
 }
 
 /**
- * Google API のエラーから待機時間を計算する。
+ * Computes the wait before the next retry, honoring `Retry-After` when present.
  *
- * @param error エラーオブジェクト
- * @param attempt 試行回数（0始まり）
- * @returns 待機時間（ミリ秒）
+ * @param error Thrown value
+ * @param attempt Attempt number (0-based)
+ * @returns Delay in milliseconds
  */
 function getRetryDelay(error: unknown, attempt: number): number {
-  // Retry-After ヘッダーを確認
   if (error instanceof Error && 'response' in error) {
     const gaxiosError = error as GaxiosErrorLike
     const retryAfter = gaxiosError.response?.headers?.['retry-after']
@@ -58,13 +53,13 @@ function getRetryDelay(error: unknown, attempt: number): number {
         ? retryAfter[0]
         : retryAfter
 
-      // 秒数で指定されている場合
+      // Delay in seconds
       const seconds = Number.parseInt(retryAfterValue, 10)
       if (!Number.isNaN(seconds)) {
         return seconds * 1000
       }
 
-      // 日付で指定されている場合
+      // HTTP date
       const retryDate = new Date(retryAfterValue)
       if (!Number.isNaN(retryDate.getTime())) {
         return Math.max(0, retryDate.getTime() - Date.now())
@@ -72,16 +67,16 @@ function getRetryDelay(error: unknown, attempt: number): number {
     }
   }
 
-  // 指数バックオフ: 1秒 → 2秒 → 4秒 → 8秒
+  // Exponential backoff capped at 8s: 1s, 2s, 4s, 8s
   return Math.min(1000 * 2 ** attempt, 8000)
 }
 
 /**
- * Google API の呼び出しをリトライ処理でラップする。
+ * Runs a Google API call, retrying on retryable errors.
  *
- * @param fn 実行する非同期関数
- * @param maxRetries 最大リトライ回数（デフォルト: 3）
- * @returns 関数の実行結果
+ * @param fn Function to run
+ * @param maxRetries Maximum number of retries (default: 3)
+ * @returns Result of the function
  */
 export async function withGoogleRetry<T>(
   fn: () => Promise<T>,
@@ -95,22 +90,20 @@ export async function withGoogleRetry<T>(
     } catch (error) {
       lastError = error
 
-      // 最終試行またはリトライ不可能なエラーの場合は例外をスロー
       if (attempt === maxRetries || !isRetryableGoogleError(error)) {
         throw error
       }
 
-      // 待機してリトライ
       const delay = getRetryDelay(error, attempt)
       console.warn(
-        `🔄 Google API エラー (試行 ${attempt + 1}/${maxRetries + 1}): ${
+        `🔄 Google API error (attempt ${attempt + 1}/${maxRetries + 1}): ${
           error instanceof Error ? error.message : String(error)
-        }. ${delay}ms 後にリトライします...`
+        }. Retrying in ${delay}ms...`
       )
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
 
-  // 到達しないはずだが、型安全性のため
+  // Unreachable; satisfies the type checker
   throw lastError
 }

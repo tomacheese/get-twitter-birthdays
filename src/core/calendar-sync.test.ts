@@ -40,9 +40,9 @@ jest.mock('../infra/storage', () => ({
 const oauth2Client = {} as Auth.OAuth2Client
 
 /**
- * テスト用の誕生日エントリを作る。
- * @param id ユーザー ID
- * @returns 誕生日エントリ
+ * Creates a birthday entry for tests.
+ * @param id User ID
+ * @returns Birthday entry
  */
 function makeEntry(id: string): BirthdayEntry {
   return {
@@ -61,9 +61,9 @@ function makeEntry(id: string): BirthdayEntry {
 }
 
 /**
- * テスト用の誕生日出力を作る。
- * @param ids 誕生日を持つユーザー ID
- * @returns 誕生日出力
+ * Creates a birthdays output for tests.
+ * @param ids IDs of users with a birthday
+ * @returns Birthdays output
  */
 function makeOutput(ids: string[]): BirthdaysOutput {
   return {
@@ -76,9 +76,9 @@ function makeOutput(ids: string[]): BirthdaysOutput {
 }
 
 /**
- * 記録済みイベントを作る。エントリと同じ内容のため更新は発生しない。
- * @param ids 記録するユーザー ID
- * @returns イベント記録
+ * Creates recorded events identical to the entries from `makeEntry`, so no update is triggered.
+ * @param ids User IDs to record
+ * @returns Event records
  */
 function makeEvents(ids: string[]): CalendarEventsStorage {
   const events: CalendarEventsStorage = {}
@@ -98,18 +98,18 @@ function makeEvents(ids: string[]): CalendarEventsStorage {
 }
 
 /**
- * 連番のユーザー ID を作る。
- * @param prefix ID の接頭辞
- * @param count 件数
- * @returns ユーザー ID の配列
+ * Creates sequential user IDs.
+ * @param prefix ID prefix
+ * @param count Number of IDs
+ * @returns User IDs
  */
 function makeIds(prefix: string, count: number): string[] {
   return Array.from({ length: count }, (_, index) => `${prefix}${index}`)
 }
 
 /**
- * 最後に保存されたイベント記録を取得する。
- * @returns 最後の saveCalendarEvents の引数
+ * Returns the event records passed to the last `saveCalendarEvents` call.
+ * @returns Event records
  */
 function lastSavedEvents(): CalendarEventsStorage {
   const lastCall = jest.mocked(saveCalendarEvents).mock.calls.at(-1)
@@ -120,8 +120,8 @@ function lastSavedEvents(): CalendarEventsStorage {
 }
 
 /**
- * 最後に保存されたイベント記録のユーザー ID を昇順で取得する。
- * @returns ソート済みのユーザー ID
+ * Returns the user IDs of the last saved event records, sorted ascending.
+ * @returns Sorted user IDs
  */
 function lastSavedUserIds(): string[] {
   return Object.keys(lastSavedEvents()).toSorted((a, b) => a.localeCompare(b))
@@ -146,7 +146,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     jest.restoreAllMocks()
   })
 
-  it('フォロー一覧が不完全なら削除候補があっても削除しない', async () => {
+  it('does not delete when the following list is incomplete, even with deletion candidates', async () => {
     const stale = makeIds('stale', 3)
     jest.mocked(loadCalendarEvents).mockReturnValue(makeEvents(['a', ...stale]))
 
@@ -158,11 +158,11 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(lastSavedUserIds()).toEqual(['a', ...stale])
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy.mock.calls[0][0]).toBe(
-      '  ⚠️ フォロー一覧を完全に取得できていないため、削除をスキップします (削除候補: 3 件)'
+      '  ⚠️ Skipping deletions because the following list was not fetched completely (candidates: 3)'
     )
   })
 
-  it('削除候補がなければ不完全でも警告しない', async () => {
+  it('does not warn without deletion candidates, even when incomplete', async () => {
     jest.mocked(loadCalendarEvents).mockReturnValue(makeEvents(['a']))
 
     await syncToGoogleCalendar(oauth2Client, makeOutput(['a']), {
@@ -173,7 +173,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  it('完全かつ上限以内なら候補だけ削除する', async () => {
+  it('deletes only the candidates when complete and within the limit', async () => {
     jest
       .mocked(loadCalendarEvents)
       .mockReturnValue(makeEvents(['a', 'stale1', 'stale2']))
@@ -195,7 +195,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  it('候補数が上限を超えると 1 件も削除せず理由を警告する', async () => {
+  it('deletes nothing and warns when candidates exceed the limit', async () => {
     mockConfig.maxDeletions = 2
     jest
       .mocked(loadCalendarEvents)
@@ -208,11 +208,11 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(deleteCalendarEvent).not.toHaveBeenCalled()
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy.mock.calls[0][0]).toBe(
-      '  ⚠️ 削除候補 3 件が上限 2 件を超えるため、削除をスキップします。問題なければ SYNC_CALENDAR_RECONCILE_MAX_DELETIONS を引き上げて再実行してください'
+      '  ⚠️ Skipping deletions because 3 candidates exceed the limit of 2. If this is expected, raise SYNC_CALENDAR_RECONCILE_MAX_DELETIONS and run again'
     )
   })
 
-  it('候補数が上限ちょうどなら削除する', async () => {
+  it('deletes when candidates equal the limit', async () => {
     mockConfig.maxDeletions = 2
     jest
       .mocked(loadCalendarEvents)
@@ -226,7 +226,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  it('上限が 0 (無制限) なら上限超過でも削除する', async () => {
+  it('deletes even beyond the usual limit when the limit is 0 (unlimited)', async () => {
     mockConfig.maxDeletions = 0
     const stale = makeIds('stale', 25)
     jest.mocked(loadCalendarEvents).mockReturnValue(makeEvents(['a', ...stale]))
@@ -239,7 +239,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(Object.keys(lastSavedEvents())).toEqual(['a'])
   })
 
-  it('取得した誕生日が空なら上限が 0 でも削除しない', async () => {
+  it('does not delete when no birthdays were fetched, even if the limit is 0', async () => {
     mockConfig.maxDeletions = 0
     jest.mocked(loadCalendarEvents).mockReturnValue(makeEvents(['x', 'y']))
 
@@ -251,11 +251,11 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(lastSavedUserIds()).toEqual(['x', 'y'])
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(warnSpy.mock.calls[0][0]).toBe(
-      '  ⚠️ 取得した誕生日が 0 件のため、削除をスキップします (削除候補: 2 件)'
+      '  ⚠️ Skipping deletions because no birthdays were fetched (candidates: 2)'
     )
   })
 
-  it('reconcile が無効なら完全でも削除しない', async () => {
+  it('does not delete when reconcile is disabled, even if complete', async () => {
     mockConfig.reconcile = false
     jest.mocked(loadCalendarEvents).mockReturnValue(makeEvents(['a', 'stale1']))
 
@@ -267,7 +267,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  it('削除をスキップしても作成と更新は実行する', async () => {
+  it('still creates and updates when deletions are skipped', async () => {
     const events = makeEvents(['changed', 'stale1'])
     events.changed.name = 'Old Name'
     jest.mocked(loadCalendarEvents).mockReturnValue(events)

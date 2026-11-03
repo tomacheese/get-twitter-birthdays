@@ -13,13 +13,13 @@ type OAuth2Client = Auth.OAuth2Client
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
 const REDIRECT_URI = 'http://localhost:3000/callback'
-const AUTH_TIMEOUT_MS = 5 * 60 * 1000 // 5 分
+const AUTH_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 
 /**
- * HTML エスケープを行う。
+ * Escapes HTML special characters.
  *
- * @param text エスケープする文字列
- * @returns エスケープされた文字列
+ * @param text Text to escape
+ * @returns Escaped text
  */
 function escapeHtml(text: string): string {
   return text
@@ -31,9 +31,9 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Google OAuth 2.0 クライアントを作成する。
+ * Creates a Google OAuth 2.0 client.
  *
- * @param credentials Google 認証情報
+ * @param credentials Google credentials
  * @returns OAuth2Client
  */
 function createOAuth2Client(credentials: GoogleCredentials): OAuth2Client {
@@ -43,10 +43,11 @@ function createOAuth2Client(credentials: GoogleCredentials): OAuth2Client {
 }
 
 /**
- * ループバック認証を実行し、トークンを取得する。
+ * Runs the loopback OAuth flow on port 3000 and returns the tokens.
+ * Rejects when the user denies access or {@link AUTH_TIMEOUT_MS} elapses.
  *
- * @param oauth2Client OAuth2Client インスタンス
- * @returns 取得したトークン
+ * @param oauth2Client OAuth2Client instance
+ * @returns Obtained tokens
  */
 async function performLoopbackAuth(
   oauth2Client: OAuth2Client
@@ -54,18 +55,16 @@ async function performLoopbackAuth(
   return new Promise((resolve, reject) => {
     let timeoutId: NodeJS.Timeout | null = null
 
-    // 認証 URL を生成
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: SCOPES,
-      prompt: 'consent', // refresh_token を確実に取得するため
+      prompt: 'consent', // Ensures a refresh_token is issued
     })
 
-    console.log('🔐 以下の URL にアクセスして認証してください:')
+    console.log('🔐 Open the following URL to authenticate:')
     console.log(authUrl)
     console.log()
 
-    // クリーンアップ関数
     const cleanup = () => {
       if (!timeoutId) {
         return
@@ -75,7 +74,6 @@ async function performLoopbackAuth(
       timeoutId = null
     }
 
-    // ループバックサーバーを起動
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     const server = http.createServer(async (request, response) => {
       if (!request.url) {
@@ -89,17 +87,15 @@ async function performLoopbackAuth(
       )
       const queryData = Object.fromEntries(requestUrl.searchParams)
 
-      // 認証コールバックを処理
       if (queryData.code) {
-        response.end('認証が完了しました。このウィンドウを閉じてください。')
+        response.end('Authentication completed. You can close this window.')
         cleanup()
         server.close()
 
         try {
-          // 認証コードをトークンに交換
           const { tokens } = await oauth2Client.getToken(queryData.code)
           if (!tokens.access_token) {
-            reject(new Error('❌ アクセストークンの取得に失敗しました'))
+            reject(new Error('❌ Failed to obtain an access token'))
             return
           }
 
@@ -108,19 +104,21 @@ async function performLoopbackAuth(
           reject(error instanceof Error ? error : new Error(String(error)))
         }
       } else if (queryData.error) {
-        response.end(`認証エラー: ${escapeHtml(queryData.error)}`)
+        response.end(`Authentication error: ${escapeHtml(queryData.error)}`)
         cleanup()
         server.close()
-        reject(new Error(`❌ 認証エラー: ${queryData.error}`))
+        reject(new Error(`❌ Authentication error: ${queryData.error}`))
       } else {
         response.end('Invalid callback')
       }
     })
 
-    // 0.0.0.0 でリッスン（Docker でポートマッピング可能）
+    // Listen on 0.0.0.0 so the port can be published from Docker
     server.listen(3000, '0.0.0.0', () => {
-      console.log('✅ ループバックサーバーが 0.0.0.0:3000 で起動しました')
-      console.log(`⏱️ 認証タイムアウト: ${AUTH_TIMEOUT_MS / 1000 / 60} 分`)
+      console.log('✅ Loopback server started on 0.0.0.0:3000')
+      console.log(
+        `⏱️ Authentication timeout: ${AUTH_TIMEOUT_MS / 1000 / 60} minutes`
+      )
     })
 
     server.on('error', (error) => {
@@ -129,13 +127,12 @@ async function performLoopbackAuth(
       reject(error)
     })
 
-    // タイムアウト設定
     timeoutId = setTimeout(() => {
       cleanup()
       server.close()
       reject(
         new Error(
-          `❌ 認証タイムアウト: ${AUTH_TIMEOUT_MS / 1000 / 60} 分以内に認証を完了してください`
+          `❌ Authentication timed out: complete authentication within ${AUTH_TIMEOUT_MS / 1000 / 60} minutes`
         )
       )
     }, AUTH_TIMEOUT_MS)
@@ -143,60 +140,57 @@ async function performLoopbackAuth(
 }
 
 /**
- * Google OAuth 2.0 認証を実行する。
- * トークンキャッシュがあれば使用し、なければループバック認証を実行する。
+ * Authenticates with Google OAuth 2.0.
+ * Uses the cached tokens if they are still valid; otherwise runs the loopback flow and caches the new tokens.
  *
- * @returns 認証済みの OAuth2Client
+ * @returns Authenticated OAuth2Client
  */
 export async function authenticateGoogle(): Promise<OAuth2Client> {
   const credentials = loadGoogleCredentials()
   if (!credentials) {
     throw new Error(
-      `❌ Google 認証情報ファイルが見つかりません。Google Cloud Console で OAuth 2.0 クライアント ID を作成し、認証情報を保存してください。`
+      `❌ Google credentials file not found. Create an OAuth 2.0 client ID in the Google Cloud Console and save the credentials to GOOGLE_CREDENTIALS_PATH.`
     )
   }
 
   const oauth2Client = createOAuth2Client(credentials)
 
-  // トークンキャッシュを確認
   const cachedTokens = loadGoogleTokens()
   if (cachedTokens) {
     oauth2Client.setCredentials(cachedTokens)
 
-    // トークンの有効性を確認
+    // Verify the cached token is still usable
     try {
       await withGoogleRetry(async () => {
         await oauth2Client.getAccessToken()
       })
-      console.log('✅ キャッシュされた Google トークンを使用します')
+      console.log('✅ Using cached Google tokens')
       return oauth2Client
     } catch {
-      console.warn('⚠️ キャッシュされたトークンが無効です。再認証します...')
+      console.warn('⚠️ Cached tokens are invalid. Re-authenticating...')
     }
   }
 
-  // ループバック認証を実行
   const tokens = await performLoopbackAuth(oauth2Client)
   oauth2Client.setCredentials(tokens)
 
-  // トークンを保存
   saveGoogleTokens(tokens)
-  console.log('✅ Google トークンをキャッシュしました')
+  console.log('✅ Google tokens cached')
 
   return oauth2Client
 }
 
 /**
- * カレンダー一覧を取得し、ユーザーに選択させる。
+ * Lists the calendars and prompts the user to pick one (Enter selects the primary calendar, or the first one if there is none).
  *
- * @param oauth2Client 認証済みの OAuth2Client
- * @returns 選択されたカレンダー ID
+ * @param oauth2Client Authenticated OAuth2Client
+ * @returns Selected calendar ID
  */
 async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 
   console.log()
-  console.log('📅 カレンダー一覧を取得しています...')
+  console.log('📅 Fetching the calendar list...')
 
   const response = await withGoogleRetry(async () => {
     return await calendar.calendarList.list()
@@ -204,23 +198,21 @@ async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
 
   const calendars = response.data.items ?? []
   if (calendars.length === 0) {
-    throw new Error('❌ カレンダーが見つかりませんでした')
+    throw new Error('❌ No calendars found')
   }
 
   console.log()
-  console.log('📋 利用可能なカレンダー:')
+  console.log('📋 Available calendars:')
   for (const [index, cal] of calendars.entries()) {
-    const isPrimary = cal.primary ? ' (プライマリ)' : ''
+    const isPrimary = cal.primary ? ' (primary)' : ''
     console.log(`  ${index + 1}. ${cal.summary ?? 'Untitled'}${isPrimary}`)
   }
 
   console.log()
 
-  // プライマリカレンダーを探す
   const primaryCalendar = calendars.find((cal) => cal.primary)
   const defaultIndex = primaryCalendar ? calendars.indexOf(primaryCalendar) : 0
 
-  // ユーザー入力を待つ
   const readline = await import('node:readline/promises')
   const rl = readline.createInterface({
     input: process.stdin,
@@ -229,7 +221,7 @@ async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
 
   try {
     const answer = await rl.question(
-      `カレンダーを選択してください (1-${calendars.length}, デフォルト: ${defaultIndex + 1}): `
+      `Select a calendar (1-${calendars.length}, default: ${defaultIndex + 1}): `
     )
     const selectedIndex =
       answer.trim() === '' ? defaultIndex : Number(answer) - 1
@@ -239,19 +231,19 @@ async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
       selectedIndex < 0 ||
       selectedIndex >= calendars.length
     ) {
-      throw new Error('❌ 無効な選択です')
+      throw new Error('❌ Invalid selection')
     }
 
     const selectedCalendar = calendars[selectedIndex]
     if (!selectedCalendar.id) {
-      throw new Error('❌ カレンダー ID が取得できませんでした')
+      throw new Error('❌ Failed to get the calendar ID')
     }
 
     console.log()
     console.log(
-      `✅ 選択されたカレンダー: ${selectedCalendar.summary ?? 'Untitled'}`
+      `✅ Selected calendar: ${selectedCalendar.summary ?? 'Untitled'}`
     )
-    console.log(`   カレンダー ID: ${selectedCalendar.id}`)
+    console.log(`   Calendar ID: ${selectedCalendar.id}`)
 
     return selectedCalendar.id
   } finally {
@@ -260,35 +252,32 @@ async function selectCalendar(oauth2Client: OAuth2Client): Promise<string> {
 }
 
 /**
- * 認証専用のエントリポイント。
- * トークンキャッシュがあれば使用し、なければループバック認証を実行する。
- * 認証後、カレンダーを選択して環境変数として設定する方法を表示する。
+ * Runs authentication, then lets the user pick a calendar and prints how to set it as `GOOGLE_CALENDAR_ID`.
  */
 export async function runGoogleAuth(): Promise<void> {
-  console.log('🔐 Google OAuth 2.0 認証を開始します...')
+  console.log('🔐 Starting Google OAuth 2.0 authentication...')
   console.log()
 
   try {
     const oauth2Client = await authenticateGoogle()
     console.log()
-    console.log('✅ 認証が完了しました！')
+    console.log('✅ Authentication completed!')
 
-    // カレンダーを選択
     const calendarId = await selectCalendar(oauth2Client)
 
     console.log()
     console.log(
-      '💡 カレンダーを使用するには、以下の環境変数を設定してください:'
+      '💡 To use this calendar, set the following environment variable:'
     )
     console.log()
     console.log(`  export GOOGLE_CALENDAR_ID="${calendarId}"`)
     console.log()
-    console.log('または、`.env` ファイルに以下を追加してください:')
+    console.log('Or add the following to your `.env` file:')
     console.log()
     console.log(`  GOOGLE_CALENDAR_ID="${calendarId}"`)
     console.log()
   } catch (error) {
-    console.error('❌ 認証に失敗しました:', error)
+    console.error('❌ Authentication failed:', error)
     throw error
   }
 }
