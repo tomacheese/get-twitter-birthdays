@@ -1,6 +1,7 @@
-import { google } from 'googleapis'
-import type { Auth } from 'googleapis'
+import { google, Auth } from 'googleapis'
+import { randomBytes, timingSafeEqual } from 'node:crypto'
 import http from 'node:http'
+import { GOOGLE_AUTH_BIND_HOST } from '../shared/config'
 import type { GoogleCredentials, GoogleTokens } from '../shared/types'
 import {
   loadGoogleCredentials,
@@ -12,8 +13,31 @@ import { withGoogleRetry } from '../shared/google-retry'
 type OAuth2Client = Auth.OAuth2Client
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar']
-const REDIRECT_URI = 'http://localhost:3000/callback'
+const AUTH_PORT = 3000
+const CALLBACK_PATH = '/callback'
+const REDIRECT_URI = `http://localhost:${AUTH_PORT}${CALLBACK_PATH}`
 const AUTH_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost'])
+
+/**
+ * Compares the callback `state` with the issued one in constant time.
+ *
+ * @param actual `state` query parameter (null when absent)
+ * @param expected Issued state
+ * @returns True when they are equal
+ */
+function isStateValid(actual: string | null, expected: string): boolean {
+  if (actual === null) {
+    return false
+  }
+
+  const actualBuffer = Buffer.from(actual)
+  const expectedBuffer = Buffer.from(expected)
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  )
+}
 
 /**
  * Escapes HTML special characters.
@@ -49,16 +73,24 @@ function createOAuth2Client(credentials: GoogleCredentials): OAuth2Client {
  * @param oauth2Client OAuth2Client instance
  * @returns Obtained tokens
  */
-async function performLoopbackAuth(
+export async function performLoopbackAuth(
   oauth2Client: OAuth2Client
 ): Promise<GoogleTokens> {
+  const state = randomBytes(32).toString('hex')
+  const { codeVerifier, codeChallenge } =
+    await oauth2Client.generateCodeVerifierAsync()
+
   return new Promise((resolve, reject) => {
     let timeoutId: NodeJS.Timeout | null = null
+    let handled = false
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: SCOPES,
       prompt: 'consent', // Ensures a refresh_token is issued
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: Auth.CodeChallengeMethod.S256,
     })
 
     console.log('🔐 Open the following URL to authenticate:')
@@ -74,48 +106,99 @@ async function performLoopbackAuth(
       timeoutId = null
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    const server = http.createServer(async (request, response) => {
-      if (!request.url) {
-        response.end('Invalid request')
+    const server = http.createServer()
+
+    const finish = () => {
+      cleanup()
+      server.close()
+      server.closeIdleConnections()
+    }
+
+    const exchangeCode = async (
+      code: string,
+      response: http.ServerResponse
+    ): Promise<void> => {
+      try {
+        const { tokens } = await oauth2Client.getToken({ code, codeVerifier })
+        if (!tokens.access_token) {
+          response.statusCode = 500
+          response.end('Authentication failed. See the terminal for details.')
+          finish()
+          reject(new Error('❌ Failed to obtain an access token'))
+          return
+        }
+
+        response.end('Authentication completed. You can close this window.')
+        finish()
+        resolve(tokens as GoogleTokens)
+      } catch (error) {
+        response.statusCode = 500
+        response.end('Authentication failed. See the terminal for details.')
+        finish()
+        reject(error instanceof Error ? error : new Error(String(error)))
+      }
+    }
+
+    server.on('request', (request, response) => {
+      if (request.method !== 'GET') {
+        response.statusCode = 405
+        response.setHeader('Allow', 'GET')
+        response.end('Method not allowed')
         return
       }
 
-      const requestUrl = new URL(
-        request.url,
-        `http://${request.headers.host ?? 'localhost'}`
-      )
-      const queryData = Object.fromEntries(requestUrl.searchParams)
+      let requestUrl: URL
+      try {
+        requestUrl = new URL(request.url ?? '/', 'http://localhost')
+      } catch {
+        response.statusCode = 400
+        response.end('Invalid request')
+        return
+      }
+      if (requestUrl.pathname !== CALLBACK_PATH) {
+        response.statusCode = 404
+        response.end('Not found')
+        return
+      }
 
-      if (queryData.code) {
-        response.end('Authentication completed. You can close this window.')
-        cleanup()
-        server.close()
+      if (!isStateValid(requestUrl.searchParams.get('state'), state)) {
+        response.statusCode = 400
+        response.end('Invalid state')
+        return
+      }
 
-        try {
-          const { tokens } = await oauth2Client.getToken(queryData.code)
-          if (!tokens.access_token) {
-            reject(new Error('❌ Failed to obtain an access token'))
-            return
-          }
+      if (handled) {
+        response.statusCode = 409
+        response.end('Callback already handled')
+        return
+      }
 
-          resolve(tokens as GoogleTokens)
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)))
-        }
-      } else if (queryData.error) {
-        response.end(`Authentication error: ${escapeHtml(queryData.error)}`)
-        cleanup()
-        server.close()
-        reject(new Error(`❌ Authentication error: ${queryData.error}`))
+      const code = requestUrl.searchParams.get('code')
+      const callbackError = requestUrl.searchParams.get('error')
+      if (code) {
+        handled = true
+        void exchangeCode(code, response)
+      } else if (callbackError) {
+        handled = true
+        response.end(`Authentication error: ${escapeHtml(callbackError)}`)
+        finish()
+        reject(new Error(`❌ Authentication error: ${callbackError}`))
       } else {
+        response.statusCode = 400
         response.end('Invalid callback')
       }
     })
 
-    // Listen on 0.0.0.0 so the port can be published from Docker
-    server.listen(3000, '0.0.0.0', () => {
-      console.log('✅ Loopback server started on 0.0.0.0:3000')
+    // Docker needs GOOGLE_AUTH_BIND_HOST=0.0.0.0 so the published port is reachable
+    server.listen(AUTH_PORT, GOOGLE_AUTH_BIND_HOST, () => {
+      console.log(
+        `✅ Loopback server started on ${GOOGLE_AUTH_BIND_HOST}:${AUTH_PORT}`
+      )
+      if (!LOOPBACK_HOSTS.has(GOOGLE_AUTH_BIND_HOST)) {
+        console.warn(
+          `⚠️ The callback port is reachable from the network (GOOGLE_AUTH_BIND_HOST=${GOOGLE_AUTH_BIND_HOST})`
+        )
+      }
       console.log(
         `⏱️ Authentication timeout: ${AUTH_TIMEOUT_MS / 1000 / 60} minutes`
       )

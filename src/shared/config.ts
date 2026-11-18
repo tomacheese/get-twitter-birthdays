@@ -19,6 +19,9 @@ export const CALENDAR_EVENTS_PATH =
 export const CALENDAR_EVENTS_LEGACY_CALENDAR_ID = (
   process.env.CALENDAR_EVENTS_LEGACY_CALENDAR_ID ?? ''
 ).trim()
+const bindHost = process.env.GOOGLE_AUTH_BIND_HOST?.trim()
+export const GOOGLE_AUTH_BIND_HOST =
+  bindHost === undefined || bindHost === '' ? '127.0.0.1' : bindHost
 export const GOOGLE_CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? 'primary'
 export const SYNC_CALENDAR_STRICT = process.env.SYNC_CALENDAR_STRICT === '1'
 export const SYNC_CALENDAR_RECONCILE =

@@ -45,3 +45,46 @@ describe('SYNC_CALENDAR_RECONCILE_MAX_DELETIONS', () => {
     }
   )
 })
+
+describe('GOOGLE_AUTH_BIND_HOST', () => {
+  const original = process.env.GOOGLE_AUTH_BIND_HOST
+
+  /**
+   * Sets the environment variable, reloads config.ts, and returns the resolved bind host.
+   * @param value Value to set (unset when undefined)
+   * @returns Resolved bind host
+   */
+  function loadBindHost(value: string | undefined): string {
+    if (value === undefined) {
+      Reflect.deleteProperty(process.env, 'GOOGLE_AUTH_BIND_HOST')
+    } else {
+      process.env.GOOGLE_AUTH_BIND_HOST = value
+    }
+    let result = ''
+    jest.isolateModules(() => {
+      const config = jest.requireActual<typeof import('./config')>('./config')
+      result = config.GOOGLE_AUTH_BIND_HOST
+    })
+    return result
+  }
+
+  afterEach(() => {
+    if (original === undefined) {
+      Reflect.deleteProperty(process.env, 'GOOGLE_AUTH_BIND_HOST')
+    } else {
+      process.env.GOOGLE_AUTH_BIND_HOST = original
+    }
+  })
+
+  it('defaults to the loopback address', () => {
+    expect(loadBindHost(undefined)).toBe('127.0.0.1')
+  })
+
+  it('defaults to the loopback address when empty', () => {
+    expect(loadBindHost('')).toBe('127.0.0.1')
+  })
+
+  it('uses the configured host', () => {
+    expect(loadBindHost('0.0.0.0')).toBe('0.0.0.0')
+  })
+})

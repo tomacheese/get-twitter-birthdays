@@ -113,7 +113,7 @@ Registers the fetched birthdays in Google Calendar as yearly recurring events.
 pnpm auth:google
 ```
 
-Open the printed URL in a browser and complete the authentication. The tokens are cached in `data/google-tokens.json`. After authentication, you are asked to pick a calendar, and the matching `GOOGLE_CALENDAR_ID` setting is printed.
+Open the printed URL in a browser and complete the authentication. The callback server listens on `127.0.0.1:3000` and only accepts the callback that carries the `state` issued for this run (PKCE is used as well). The tokens are cached in `data/google-tokens.json`. After authentication, you are asked to pick a calendar, and the matching `GOOGLE_CALENDAR_ID` setting is printed.
 
 #### 3. Run
 
@@ -125,11 +125,12 @@ If `data/google-credentials.json` exists, the sync to Google Calendar runs autom
 
 ### With Docker
 
-The Docker image only moves the Twitter-related paths to `/data`, so point the Google-related paths there too. Port 3000 must be published during authentication.
+The Docker image only moves the Twitter-related paths to `/data`, so point the Google-related paths there too. Port 3000 must be published during authentication, and the callback server must listen on all interfaces inside the container with `GOOGLE_AUTH_BIND_HOST=0.0.0.0`. Publish the port on the host loopback only (`127.0.0.1:3000:3000`).
 
 ```bash
 # Authenticate
-docker run -it --rm --entrypoint pnpm -p 3000:3000 -v "${PWD}/data:/data" \
+docker run -it --rm --entrypoint pnpm -p 127.0.0.1:3000:3000 -v "${PWD}/data:/data" \
+  -e GOOGLE_AUTH_BIND_HOST=0.0.0.0 \
   -e GOOGLE_CREDENTIALS_PATH=/data/google-credentials.json \
   -e GOOGLE_TOKEN_CACHE_PATH=/data/google-tokens.json \
   get-twitter-birthdays auth:google
@@ -184,6 +185,7 @@ Either can instead be set in `data/config.json`.
 - `GOOGLE_CREDENTIALS_PATH` (default: `./data/google-credentials.json`)
 - `GOOGLE_TOKEN_CACHE_PATH` (default: `./data/google-tokens.json`)
 - `CALENDAR_EVENTS_PATH` (default: `./data/calendar-events.json`)
+- `GOOGLE_AUTH_BIND_HOST` (default: `127.0.0.1`): address the `pnpm auth:google` callback server listens on. Set `0.0.0.0` only when running in Docker.
 - `GOOGLE_CALENDAR_ID` (default: `primary`)
 - `CALENDAR_EVENTS_LEGACY_CALENDAR_ID`: real ID of the calendar that an existing `calendar-events.json` without calendar information belongs to. Only used once, to migrate it (see "Upgrading from a version that did not record the calendar")
 - `SYNC_CALENDAR_STRICT=1`: exit with code 1 when the sync fails
@@ -197,7 +199,7 @@ Either can instead be set in `data/config.json`.
 - `MAX_FOLLOWING_USERS`: maximum number of following users
 - `MAX_EMPTY_PAGES`: stop after this many consecutive pages that add no new users (default: 3)
 - `MAX_DETAIL_USERS`: maximum number of users whose details are fetched
-- `FORCE_DETAIL_REFRESH=1`: redo the detail fetch even if a progress file exists
+- `FORCE_DETAIL_REFRESH=1`: redo the detail fetch when resuming an unfinished progress file
 - `FORCE_FOLLOWING_REFRESH=1`: ignore the progress file and restart from the following list
 - `PER_USER_BIRTHDATE_LOOKUP=1`: look up each user's birthdate again through the single-user API after the detail fetch
 - `MAX_BIRTHDATE_LOOKUP`: maximum number of such lookups (0 = unlimited)

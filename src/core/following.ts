@@ -108,7 +108,7 @@ export async function fetchFollowingUsers(
   const enableBirthdateLookup = envFlag('PER_USER_BIRTHDATE_LOOKUP')
   const maxBirthdateLookup = envNumber('MAX_BIRTHDATE_LOOKUP', 0)
 
-  if (progress?.sourceUser === sourceUser) {
+  if (progress?.sourceUser === sourceUser && progress.stage !== 'done') {
     stage = progress.stage
     cursor = progress.cursor
     seenCursors = new Set(progress.seenCursors)
@@ -363,70 +363,68 @@ export async function fetchFollowingUsers(
     persistProgress(stage, detailBatchIndex)
   }
 
-  if (stage === 'details') {
-    missingBirthdateIds ??= usersById
-      .values()
-      .filter((user) => !user.birthdate)
-      .map((user) => user.id)
-      .toArray()
-    const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
-    if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
-      missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
-      snapshotComplete = false
-    }
+  missingBirthdateIds ??= usersById
+    .values()
+    .filter((user) => !user.birthdate)
+    .map((user) => user.id)
+    .toArray()
+  const maxDetailUsers = envNumber('MAX_DETAIL_USERS', 0)
+  if (maxDetailUsers > 0 && missingBirthdateIds.length > maxDetailUsers) {
+    missingBirthdateIds = missingBirthdateIds.slice(0, maxDetailUsers)
+    snapshotComplete = false
+  }
 
-    if (missingBirthdateIds.length > 0) {
-      const batches = chunkArray(missingBirthdateIds, BATCH_SIZE)
-      let batchIndex = detailBatchIndex
-      for (; batchIndex < batches.length; batchIndex += 1) {
-        const batch = batches[batchIndex]
-        console.log(
-          `Fetching user details batch ${batchIndex + 1}/${batches.length} (${batch.length} users)...`
-        )
-        for (const restId of batch) {
-          const current = usersById.get(restId)
-          if (!current) {
-            continue
-          }
-          const detail = await withRetry(
-            () =>
-              client
-                .getUserApi()
-                .getUserByScreenName({ screenName: current.screenName }),
-            {
-              maxRetries: 3,
-              baseDelayMs: 2000,
-              operationName: `Fetch user ${restId}`,
-            }
-          )
-          const user = detail.data.user
-          if (!user) {
-            continue
-          }
-          const entry = upsertUser(user, true)
-          if (!entry) {
-            continue
-          }
-          if (!entry.birthdate && canLookupBirthdate()) {
-            const lookupResult = await lookupBirthdate(entry.screenName)
-            if (lookupResult) {
-              entry.birthdate = lookupResult
-              usersById.set(entry.id, entry)
-            }
-          }
-          const birthdateText = entry.birthdate
-            ? formatBirthdate(entry.birthdate)
-            : 'none'
-          console.log(
-            `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
-          )
-          persistState('details', batchIndex)
+  if (missingBirthdateIds.length > 0) {
+    const batches = chunkArray(missingBirthdateIds, BATCH_SIZE)
+    let batchIndex = detailBatchIndex
+    for (; batchIndex < batches.length; batchIndex += 1) {
+      const batch = batches[batchIndex]
+      console.log(
+        `Fetching user details batch ${batchIndex + 1}/${batches.length} (${batch.length} users)...`
+      )
+      for (const restId of batch) {
+        const current = usersById.get(restId)
+        if (!current) {
+          continue
         }
+        const detail = await withRetry(
+          () =>
+            client
+              .getUserApi()
+              .getUserByScreenName({ screenName: current.screenName }),
+          {
+            maxRetries: 3,
+            baseDelayMs: 2000,
+            operationName: `Fetch user ${restId}`,
+          }
+        )
+        const user = detail.data.user
+        if (!user) {
+          continue
+        }
+        const entry = upsertUser(user, true)
+        if (!entry) {
+          continue
+        }
+        if (!entry.birthdate && canLookupBirthdate()) {
+          const lookupResult = await lookupBirthdate(entry.screenName)
+          if (lookupResult) {
+            entry.birthdate = lookupResult
+            usersById.set(entry.id, entry)
+          }
+        }
+        const birthdateText = entry.birthdate
+          ? formatBirthdate(entry.birthdate)
+          : 'none'
+        console.log(
+          `Updated user ${entry.id} (${entry.screenName}). Birthdate: ${birthdateText}`
+        )
+        persistState('details', batchIndex)
       }
     }
-    stage = 'done'
-    persistProgress(stage, chunkArray(missingBirthdateIds, BATCH_SIZE).length)
   }
+  stage = 'done'
+  persistProgress(stage, chunkArray(missingBirthdateIds, BATCH_SIZE).length)
 
   return {
     output: buildOutput(usersById, sourceUser),
