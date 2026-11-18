@@ -81,7 +81,7 @@ export async function getAuthCookies(credentials: Credentials): Promise<{
   authToken: string
   ct0: string
 }> {
-  const cached = loadCachedCookies()
+  const cached = loadCachedCookies(credentials.username)
   if (cached) {
     console.log('Using cached cookies')
     return { authToken: cached.auth_token, ct0: cached.ct0 }
@@ -112,7 +112,7 @@ export async function getAuthCookies(credentials: Credentials): Promise<{
     throw new Error('Failed to get auth_token or ct0 from cookies')
   }
 
-  saveCookies(authToken, ct0)
+  saveCookies(authToken, ct0, credentials.username)
   console.log('Login successful, cookies saved')
 
   return { authToken, ct0 }
