@@ -82,6 +82,15 @@ export function loadConfig(): Config | null {
 }
 
 /**
+ * Normalizes a username for comparison: trims, strips one leading `@`, lowercases.
+ * @param value Username as configured or cached
+ * @returns Normalized username
+ */
+function normalizeUsername(value: string): string {
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
+/**
  * Checks that parsed data has the cookie cache shape.
  * @param data Parsed data
  * @returns True if valid
@@ -94,15 +103,17 @@ function isValidCachedCookies(data: unknown): data is CachedCookies {
   return (
     typeof obj.auth_token === 'string' &&
     typeof obj.ct0 === 'string' &&
-    typeof obj.savedAt === 'number'
+    typeof obj.savedAt === 'number' &&
+    typeof obj.username === 'string'
   )
 }
 
 /**
  * Loads the cookie cache.
- * @returns Cached cookies, or null if missing, invalid, or older than `COOKIE_EXPIRY_DAYS`
+ * @param username Configured username; compared after normalization
+ * @returns Cached cookies, or null if missing, invalid (including a legacy cache without a username), older than `COOKIE_EXPIRY_DAYS`, or issued for a different account
  */
-export function loadCachedCookies(): CachedCookies | null {
+export function loadCachedCookies(username: string): CachedCookies | null {
   try {
     if (!fs.existsSync(COOKIE_CACHE_FILE)) {
       return null
@@ -113,7 +124,16 @@ export function loadCachedCookies(): CachedCookies | null {
       return null
     }
     const expiryMs = COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000
-    return Date.now() - data.savedAt > expiryMs ? null : data
+    if (Date.now() - data.savedAt > expiryMs) {
+      return null
+    }
+    if (normalizeUsername(data.username) !== normalizeUsername(username)) {
+      console.log(
+        'Cookie cache belongs to a different account; logging in again'
+      )
+      return null
+    }
+    return data
   } catch (error) {
     console.warn('Failed to load cached cookies', error)
     return null
@@ -124,8 +144,13 @@ export function loadCachedCookies(): CachedCookies | null {
  * Saves the cookie cache.
  * @param authToken `auth_token` cookie value
  * @param ct0 `ct0` (CSRF token) cookie value
+ * @param username Username the cookies were issued for; stored normalized
  */
-export function saveCookies(authToken: string, ct0: string): void {
+export function saveCookies(
+  authToken: string,
+  ct0: string,
+  username: string
+): void {
   const dir = path.dirname(COOKIE_CACHE_FILE)
   if (dir && dir !== '.' && !fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
@@ -134,6 +159,7 @@ export function saveCookies(authToken: string, ct0: string): void {
     auth_token: authToken,
     ct0,
     savedAt: Date.now(),
+    username: normalizeUsername(username),
   }
   fs.writeFileSync(COOKIE_CACHE_FILE, JSON.stringify(data, null, 2))
 }

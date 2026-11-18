@@ -20,6 +20,8 @@ export interface CachedCookies {
   auth_token: string
   ct0: string
   savedAt: number
+  /** Normalized username the cookies were issued for */
+  username: string
 }
 
 /** Birthdate info. */
