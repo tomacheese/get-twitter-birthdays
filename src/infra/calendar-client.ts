@@ -55,6 +55,32 @@ export function formatBirthdateAsDateRange(birthdate: BirthdateInfo): {
 }
 
 /**
+ * Resolves `GOOGLE_CALENDAR_ID` (which may be the alias `primary`) to the real calendar ID.
+ * The result identifies the calendar the event records belong to; API calls keep using `GOOGLE_CALENDAR_ID`.
+ *
+ * @param oauth2Client Authenticated OAuth2Client
+ * @returns Real calendar ID
+ * @throws If the API response has no calendar ID
+ */
+export async function resolveCalendarId(
+  oauth2Client: OAuth2Client
+): Promise<string> {
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+
+  const response = await withGoogleRetry(async () => {
+    return await calendar.calendars.get({ calendarId: GOOGLE_CALENDAR_ID })
+  })
+
+  if (!response.data.id) {
+    throw new Error(
+      `❌ Failed to resolve the calendar ID for "${GOOGLE_CALENDAR_ID}"`
+    )
+  }
+
+  return response.data.id
+}
+
+/**
  * Creates a yearly recurring all-day birthday event.
  * The Twitter user ID is stored in the private extended property `twitterUserId`.
  * The title is intentionally Japanese (`<name>(@<screenName>)の誕生日`) and is part of the user-visible calendar output.

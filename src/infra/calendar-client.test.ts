@@ -1,5 +1,52 @@
+import type { Auth } from 'googleapis'
 import type { BirthdateInfo } from '../shared/types'
-import { formatBirthdateAsDateRange } from './calendar-client'
+import {
+  formatBirthdateAsDateRange,
+  resolveCalendarId,
+} from './calendar-client'
+
+const mockCalendarsGet = jest.fn()
+
+jest.mock('googleapis', () => ({
+  google: {
+    calendar: () => ({
+      calendars: { get: mockCalendarsGet },
+    }),
+  },
+}))
+
+jest.mock('../shared/config', () => ({
+  GOOGLE_CALENDAR_ID: 'primary',
+}))
+
+jest.mock('../shared/google-retry', () => ({
+  withGoogleRetry: async <T>(fn: () => Promise<T>): Promise<T> => await fn(),
+}))
+
+const oauth2Client = {} as Auth.OAuth2Client
+
+describe('resolveCalendarId', () => {
+  beforeEach(() => {
+    mockCalendarsGet.mockReset()
+  })
+
+  it('returns the real calendar ID that the configured ID resolves to', async () => {
+    mockCalendarsGet.mockResolvedValue({ data: { id: 'user@example.com' } })
+
+    await expect(resolveCalendarId(oauth2Client)).resolves.toBe(
+      'user@example.com'
+    )
+    expect(mockCalendarsGet).toHaveBeenCalledWith({ calendarId: 'primary' })
+  })
+
+  it('throws when the response has no calendar ID', async () => {
+    mockCalendarsGet.mockResolvedValue({ data: {} })
+
+    await expect(resolveCalendarId(oauth2Client)).rejects.toThrow(
+      '❌ Failed to resolve the calendar ID for "primary"'
+    )
+  })
+})
 
 function makeBirthdate(
   month: number,

@@ -152,7 +152,11 @@ docker run --rm -v "${PWD}/data:/data" \
 
 ### Change detection and updates
 
-Changes to the name, screen name, birthdate or profile URL are detected and the event is updated. Events are tracked in `data/calendar-events.json`, so duplicates are not created.
+Changes to the name, screen name, birthdate or profile URL are detected and the event is updated. Events are tracked in `data/calendar-events.json`, so duplicates are not created. The records are kept per target calendar (identified by its real calendar ID, so `primary` is resolved to the authenticated account's calendar). Changing `GOOGLE_CALENDAR_ID` or the Google account therefore creates the events in the new calendar, and switching back reuses the earlier records.
+
+### Upgrading from a version that did not record the calendar
+
+Back up `data/calendar-events.json` before upgrading, because the new format cannot be read by older versions. If the existing file has records but no calendar information, the sync stops with an error instead of guessing which calendar they belong to. Set `CALENDAR_EVENTS_LEGACY_CALENDAR_ID` to the real ID of the calendar the events were created in (the ID printed by `pnpm auth:google`, not `primary`) and run again to migrate the records, or delete the file to start over (events that already exist in the calendar are then created again).
 
 ## Environment variables
 
@@ -181,6 +185,7 @@ Either can instead be set in `data/config.json`.
 - `GOOGLE_TOKEN_CACHE_PATH` (default: `./data/google-tokens.json`)
 - `CALENDAR_EVENTS_PATH` (default: `./data/calendar-events.json`)
 - `GOOGLE_CALENDAR_ID` (default: `primary`)
+- `CALENDAR_EVENTS_LEGACY_CALENDAR_ID`: real ID of the calendar that an existing `calendar-events.json` without calendar information belongs to. Only used once, to migrate it (see "Upgrading from a version that did not record the calendar")
 - `SYNC_CALENDAR_STRICT=1`: exit with code 1 when the sync fails
 - `SYNC_CALENDAR_RECONCILE=1`: also delete the events of users who are no longer in the birthdays
   - No events are deleted if the following list was not fetched completely (for example, it was cut off by `MAX_FOLLOWING_PAGES`, `MAX_FOLLOWING_USERS` or `MAX_DETAIL_USERS`), if no birthdays were fetched, or if the number of deletion candidates exceeds the limit below.

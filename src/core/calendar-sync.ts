@@ -8,6 +8,7 @@ import type {
 import {
   createCalendarEvent,
   deleteCalendarEvent,
+  resolveCalendarId,
   updateCalendarEvent,
 } from '../infra/calendar-client'
 import { loadCalendarEvents, saveCalendarEvents } from '../infra/storage'
@@ -98,7 +99,7 @@ function getReconcileSkipReason(
  * Syncs birthdays to Google Calendar.
  *
  * Per-user failures are collected and processing continues with the other users; an error is thrown at the end if any failed.
- * The event records are saved after every create/update/delete, so events created before a crash are not created again.
+ * The event records are kept per target calendar (identified by its resolved ID) and saved after every create/update/delete, so events created before a crash are not created again.
  *
  * @param oauth2Client Authenticated OAuth2Client
  * @param birthdaysOutput Birthdays to sync
@@ -111,7 +112,8 @@ export async function syncToGoogleCalendar(
 ): Promise<void> {
   console.log('📅 Starting Google Calendar sync...')
 
-  let events = loadCalendarEvents()
+  const calendarId = await resolveCalendarId(oauth2Client)
+  let events = loadCalendarEvents(calendarId)
   const currentUserIds = new Set(birthdaysOutput.birthdays.map((b) => b.id))
   let created = 0
   let updated = 0
@@ -146,7 +148,7 @@ export async function syncToGoogleCalendar(
         }
 
         // Save right after creating the event to avoid duplicates after a crash
-        saveCalendarEvents(events)
+        saveCalendarEvents(calendarId, events)
 
         console.log(`  ✅ Created: ${entry.name}(@${entry.screenName})`)
         created++
@@ -182,7 +184,7 @@ export async function syncToGoogleCalendar(
         }
 
         // Save right after updating the event so the record never lags behind the calendar
-        saveCalendarEvents(events)
+        saveCalendarEvents(calendarId, events)
 
         console.log(`  🔄 Updated: ${entry.name}(@${entry.screenName})`)
         updated++
@@ -223,7 +225,7 @@ export async function syncToGoogleCalendar(
         await deleteCalendarEvent(oauth2Client, record.eventId)
         events = removeEventByUserId(events, userId)
 
-        saveCalendarEvents(events)
+        saveCalendarEvents(calendarId, events)
 
         console.log(`  🗑️  Deleted: ${record.name}(@${record.screenName})`)
         deleted++
@@ -240,7 +242,7 @@ export async function syncToGoogleCalendar(
     }
   }
 
-  saveCalendarEvents(events)
+  saveCalendarEvents(calendarId, events)
 
   console.log()
   console.log('✅ Sync completed')

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {
+  CALENDAR_EVENTS_LEGACY_CALENDAR_ID,
   CALENDAR_EVENTS_PATH,
   CONFIG_PATH,
   COOKIE_CACHE_FILE,
@@ -11,6 +12,7 @@ import {
 import type {
   BirthdaysOutput,
   CachedCookies,
+  CalendarEventsFile,
   CalendarEventsStorage,
   Config,
   GoogleCredentials,
@@ -179,28 +181,96 @@ export function saveGoogleTokens(tokens: GoogleTokens): void {
   fs.writeFileSync(GOOGLE_TOKEN_CACHE_PATH, JSON.stringify(tokens, null, 2))
 }
 
-/**
- * Loads the calendar event records.
- * @returns Event records keyed by user ID (empty if missing or unreadable)
- */
-export function loadCalendarEvents(): CalendarEventsStorage {
-  if (!fs.existsSync(CALENDAR_EVENTS_PATH)) {
-    return {}
-  }
-  try {
-    const raw = fs.readFileSync(CALENDAR_EVENTS_PATH, 'utf8')
-    return JSON.parse(raw) as CalendarEventsStorage
-  } catch (error) {
-    console.warn('⚠️ Failed to load the calendar event records', error)
-    return {}
-  }
+function writeCalendarEventsFile(file: CalendarEventsFile): void {
+  ensureOutputDir(CALENDAR_EVENTS_PATH)
+  fs.writeFileSync(CALENDAR_EVENTS_PATH, JSON.stringify(file, null, 2))
 }
 
 /**
- * Saves the calendar event records.
- * @param events Event records keyed by user ID
+ * Reads the calendar event records file of every calendar.
+ *
+ * A legacy file (a flat map without calendar info) is migrated only when `CALENDAR_EVENTS_LEGACY_CALENDAR_ID` names the calendar it belongs to.
+ *
+ * @returns Records of every calendar (empty if the file is missing)
+ * @throws If the file is unreadable, unsupported, or a non-empty legacy file has no confirmed calendar
  */
-export function saveCalendarEvents(events: CalendarEventsStorage): void {
-  ensureOutputDir(CALENDAR_EVENTS_PATH)
-  fs.writeFileSync(CALENDAR_EVENTS_PATH, JSON.stringify(events, null, 2))
+function readCalendarEventsFile(): CalendarEventsFile {
+  if (!fs.existsSync(CALENDAR_EVENTS_PATH)) {
+    return { version: 2, calendars: {} }
+  }
+
+  const unsupported = (cause?: unknown): Error =>
+    new Error(
+      `❌ ${CALENDAR_EVENTS_PATH} is not a supported calendar event records file`,
+      { cause }
+    )
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(fs.readFileSync(CALENDAR_EVENTS_PATH, 'utf8'))
+  } catch (error) {
+    throw unsupported(error)
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw unsupported()
+  }
+
+  const record = parsed as Record<string, unknown>
+  if ('version' in record) {
+    if (record.version !== 2) {
+      throw unsupported()
+    }
+    const { calendars } = record
+    if (
+      calendars === null ||
+      typeof calendars !== 'object' ||
+      Array.isArray(calendars)
+    ) {
+      throw unsupported()
+    }
+    return record as unknown as CalendarEventsFile
+  }
+
+  const legacy = record as CalendarEventsStorage
+  if (Object.keys(legacy).length === 0) {
+    return { version: 2, calendars: {} }
+  }
+  if (!CALENDAR_EVENTS_LEGACY_CALENDAR_ID) {
+    throw new Error(
+      `❌ ${CALENDAR_EVENTS_PATH} has no calendar recorded. Set CALENDAR_EVENTS_LEGACY_CALENDAR_ID to the calendar ID the records were created in, or delete the file`
+    )
+  }
+
+  const migrated: CalendarEventsFile = {
+    version: 2,
+    calendars: { [CALENDAR_EVENTS_LEGACY_CALENDAR_ID]: legacy },
+  }
+  writeCalendarEventsFile(migrated)
+  console.log('ℹ️ Migrated legacy calendar event records')
+  return migrated
+}
+
+/**
+ * Loads the event records of one calendar.
+ * @param calendarId Resolved calendar ID the records belong to
+ * @returns Event records keyed by user ID (empty if none are recorded for the calendar)
+ * @throws If the file is unreadable, unsupported, or an unconfirmed legacy file (see {@link readCalendarEventsFile})
+ */
+export function loadCalendarEvents(calendarId: string): CalendarEventsStorage {
+  return readCalendarEventsFile().calendars[calendarId] ?? {}
+}
+
+/**
+ * Saves the event records of one calendar, leaving the other calendars' records unchanged.
+ * @param calendarId Resolved calendar ID the records belong to
+ * @param events Event records keyed by user ID
+ * @throws If the existing file is unreadable or unsupported
+ */
+export function saveCalendarEvents(
+  calendarId: string,
+  events: CalendarEventsStorage
+): void {
+  const file = readCalendarEventsFile()
+  file.calendars[calendarId] = events
+  writeCalendarEventsFile(file)
 }

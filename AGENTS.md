@@ -37,7 +37,7 @@ Run `pnpm lint` and `pnpm test` before committing. Node.js and pnpm versions are
 - `src/core/`: domain logic
   - `following.ts`: fetches the following list and details. Returns `complete` (whether the result is a complete snapshot), stored as `snapshotComplete` in the progress file.
   - `output.ts`: builds the output JSON.
-  - `calendar-sync.ts`: diff-based Calendar sync. Reconcile deletions are skipped entirely when `complete` is false, no birthdays were fetched, or the candidates exceed `SYNC_CALENDAR_RECONCILE_MAX_DELETIONS`.
+  - `calendar-sync.ts`: diff-based Calendar sync. Event records are scoped to the resolved target calendar ID (`calendar-events.json` is `{ version: 2, calendars }`; a legacy flat file is migrated only with `CALENDAR_EVENTS_LEGACY_CALENDAR_ID`). Reconcile deletions are skipped entirely when `complete` is false, no birthdays were fetched, or the candidates exceed `SYNC_CALENDAR_RECONCILE_MAX_DELETIONS`.
 - `src/infra/`: external integrations (`auth.ts`, `cycletls.ts`, `storage.ts`, `calendar-client.ts`, `google-auth.ts`, `logger.ts`)
 - `src/shared/`: `config.ts` (environment variables), `types.ts`, `retry.ts` / `google-retry.ts`
 - `src/types/third-party.d.ts`: type declarations for untyped libraries

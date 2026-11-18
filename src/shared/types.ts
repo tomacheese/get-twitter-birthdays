@@ -144,5 +144,11 @@ export interface CalendarEventRecord {
   updatedAt: string
 }
 
-/** All calendar event records, keyed by Twitter user ID. */
+/** One calendar's event records, keyed by Twitter user ID. */
 export type CalendarEventsStorage = Record<string, CalendarEventRecord>
+
+/** Calendar event records of every calendar, keyed by the resolved calendar ID. */
+export interface CalendarEventsFile {
+  version: 2
+  calendars: Record<string, CalendarEventsStorage>
+}

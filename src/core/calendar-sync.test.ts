@@ -7,6 +7,7 @@ import type {
 import {
   createCalendarEvent,
   deleteCalendarEvent,
+  resolveCalendarId,
   updateCalendarEvent,
 } from '../infra/calendar-client'
 import { loadCalendarEvents, saveCalendarEvents } from '../infra/storage'
@@ -27,6 +28,7 @@ jest.mock('../shared/config', () => ({
 }))
 
 jest.mock('../infra/calendar-client', () => ({
+  resolveCalendarId: jest.fn(),
   createCalendarEvent: jest.fn(),
   updateCalendarEvent: jest.fn(),
   deleteCalendarEvent: jest.fn(),
@@ -116,7 +118,7 @@ function lastSavedEvents(): CalendarEventsStorage {
   if (!lastCall) {
     throw new Error('saveCalendarEvents was not called')
   }
-  return lastCall[0]
+  return lastCall[1]
 }
 
 /**
@@ -134,6 +136,7 @@ describe('syncToGoogleCalendar reconcile', () => {
     jest.clearAllMocks()
     mockConfig.reconcile = true
     mockConfig.maxDeletions = 10
+    jest.mocked(resolveCalendarId).mockResolvedValue('cal-A')
     jest.mocked(createCalendarEvent).mockResolvedValue('created-event')
     jest.mocked(updateCalendarEvent).mockResolvedValue()
     jest.mocked(deleteCalendarEvent).mockResolvedValue()
@@ -280,5 +283,71 @@ describe('syncToGoogleCalendar reconcile', () => {
     expect(updateCalendarEvent).toHaveBeenCalledTimes(1)
     expect(deleteCalendarEvent).not.toHaveBeenCalled()
     expect(lastSavedUserIds()).toEqual(['changed', 'new', 'stale1'])
+  })
+})
+
+describe('syncToGoogleCalendar calendar scope', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockConfig.reconcile = true
+    mockConfig.maxDeletions = 10
+    jest.mocked(resolveCalendarId).mockResolvedValue('cal-B')
+    jest.mocked(createCalendarEvent).mockResolvedValue('created-event')
+    jest.mocked(updateCalendarEvent).mockResolvedValue()
+    jest.mocked(deleteCalendarEvent).mockResolvedValue()
+    jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('loads and saves the records under the resolved calendar ID', async () => {
+    jest.mocked(loadCalendarEvents).mockReturnValue({})
+
+    await syncToGoogleCalendar(oauth2Client, makeOutput(['a']), {
+      followingComplete: true,
+    })
+
+    expect(loadCalendarEvents).toHaveBeenCalledWith('cal-B')
+    const saveCalendarIds = jest
+      .mocked(saveCalendarEvents)
+      .mock.calls.map(([calendarId]) => calendarId)
+    expect(saveCalendarIds.length).toBeGreaterThan(0)
+    expect(new Set(saveCalendarIds)).toEqual(new Set(['cal-B']))
+  })
+
+  it('creates every birthday in a calendar that has no records yet', async () => {
+    jest.mocked(loadCalendarEvents).mockImplementation((calendarId) => {
+      return calendarId === 'cal-A' ? makeEvents(['a', 'b']) : {}
+    })
+
+    await syncToGoogleCalendar(oauth2Client, makeOutput(['a', 'b']), {
+      followingComplete: true,
+    })
+
+    expect(createCalendarEvent).toHaveBeenCalledTimes(2)
+    expect(updateCalendarEvent).not.toHaveBeenCalled()
+    expect(deleteCalendarEvent).not.toHaveBeenCalled()
+  })
+
+  it('changes nothing when the calendar ID cannot be resolved', async () => {
+    jest
+      .mocked(resolveCalendarId)
+      .mockRejectedValue(new Error('resolve failed'))
+
+    await expect(
+      syncToGoogleCalendar(oauth2Client, makeOutput(['a']), {
+        followingComplete: true,
+      })
+    ).rejects.toThrow('resolve failed')
+
+    expect(loadCalendarEvents).not.toHaveBeenCalled()
+    expect(createCalendarEvent).not.toHaveBeenCalled()
+    expect(updateCalendarEvent).not.toHaveBeenCalled()
+    expect(deleteCalendarEvent).not.toHaveBeenCalled()
+    expect(saveCalendarEvents).not.toHaveBeenCalled()
   })
 })
