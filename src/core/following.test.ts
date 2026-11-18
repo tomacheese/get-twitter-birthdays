@@ -293,6 +293,36 @@ describe('fetchFollowingUsers complete', () => {
     expect(result.complete).toBe(false)
   })
 
+  it.each([true, false])(
+    'starts a fresh fetch after a done snapshot with completeness %s',
+    async (complete) => {
+      const first = makeClient([{ users: ['1'] }])
+      await run(first.client)
+      const saved = jest.mocked(saveProgress).mock.calls.at(-1)?.[1]
+      expect(saved?.stage).toBe('done')
+      if (!saved) throw new Error('Progress was not saved')
+      jest.mocked(loadProgress).mockReturnValue({
+        ...saved,
+        snapshotComplete: complete,
+      })
+
+      const second = makeClient([{ users: ['2'] }], false)
+      const getUserByScreenName = jest.fn().mockResolvedValue({
+        data: { user: makeUser('2', true) },
+      })
+      jest.spyOn(second.client, 'getUserApi').mockReturnValue({
+        getUserByScreenName,
+      } as unknown as ReturnType<TwitterClient['getUserApi']>)
+      const result = await run(second.client)
+
+      expect(second.getFollowing).toHaveBeenCalledTimes(1)
+      expect(getUserByScreenName).toHaveBeenCalledTimes(1)
+      expect(result.complete).toBe(true)
+      expect(result.output.totalFollowing).toBe(1)
+      expect(result.output.birthdays.map((user) => user.id)).toEqual(['2'])
+    }
+  )
+
   it('saves snapshotComplete in the progress file, true after a complete fetch', async () => {
     const { client } = makeClient([
       { users: ['1'], nextCursor: 'c1' },

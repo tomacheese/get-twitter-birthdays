@@ -192,7 +192,7 @@ Either can instead be set in `data/config.json`.
 - `MAX_FOLLOWING_USERS`: maximum number of following users
 - `MAX_EMPTY_PAGES`: stop after this many consecutive pages that add no new users (default: 3)
 - `MAX_DETAIL_USERS`: maximum number of users whose details are fetched
-- `FORCE_DETAIL_REFRESH=1`: redo the detail fetch even if a progress file exists
+- `FORCE_DETAIL_REFRESH=1`: redo the detail fetch when resuming an unfinished progress file
 - `FORCE_FOLLOWING_REFRESH=1`: ignore the progress file and restart from the following list
 - `PER_USER_BIRTHDATE_LOOKUP=1`: look up each user's birthdate again through the single-user API after the detail fetch
 - `MAX_BIRTHDATE_LOOKUP`: maximum number of such lookups (0 = unlimited)
