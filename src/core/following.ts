@@ -399,11 +399,12 @@ export async function fetchFollowingUsers(
           }
         )
         const user = detail.data.user
-        if (!user) {
-          continue
-        }
-        const entry = upsertUser(user, true)
+        const entry = user ? upsertUser(user, true) : null
         if (!entry) {
+          snapshotComplete = false
+          console.warn(
+            `Could not resolve user @${current.screenName} from the detail API. Marking the snapshot as incomplete.`
+          )
           continue
         }
         if (!entry.birthdate && canLookupBirthdate()) {

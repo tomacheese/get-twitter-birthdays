@@ -72,7 +72,10 @@ function makeClient(pages: PageSpec[], withBirthdate = true) {
   const client = {
     getUserListApi: () => ({ getFollowing }),
     getUserApi: () => ({
-      getUserByScreenName: () => Promise.resolve({ data: {} }),
+      getUserByScreenName: ({ screenName }: { screenName: string }) =>
+        Promise.resolve({
+          data: { user: makeUser(screenName.replace('user', ''), false) },
+        }),
     }),
   } as unknown as TwitterClient
   return { client, getFollowing }
@@ -251,6 +254,63 @@ describe('fetchFollowingUsers complete', () => {
     const result = await run(client)
 
     expect(result.complete).toBe(true)
+  })
+
+  /**
+   * Overrides the detail API of a mock client.
+   * @param client Twitter client
+   * @param detail Maps a screen name to the `data` payload of the detail response
+   */
+  function stubDetail(
+    client: TwitterClient,
+    detail: (screenName: string) => { user?: ApiUser | null }
+  ) {
+    jest.spyOn(client, 'getUserApi').mockReturnValue({
+      getUserByScreenName: ({ screenName }: { screenName: string }) =>
+        Promise.resolve({ data: detail(screenName) }),
+    } as unknown as ReturnType<TwitterClient['getUserApi']>)
+  }
+
+  const unresolvedCases: [string, (screenName: string) => object][] = [
+    ['user is null', () => ({ user: null })],
+    ['user is absent', () => ({})],
+    [
+      'user has no screen name',
+      () => ({ user: { restId: '2', legacy: { name: 'User 2' } } }),
+    ],
+  ]
+
+  it.each(unresolvedCases)(
+    'is incomplete when a detail lookup is unresolved because the %s',
+    async (_, unresolved) => {
+      const { client } = makeClient([{ users: ['1', '2'] }], false)
+      stubDetail(client, (screenName) =>
+        screenName === 'user2'
+          ? unresolved(screenName)
+          : { user: makeUser('1', false) }
+      )
+
+      const result = await run(client)
+
+      expect(result.complete).toBe(false)
+      expect(result.output.totalFollowing).toBe(2)
+      expect(console.warn).toHaveBeenCalledWith(
+        'Could not resolve user @user2 from the detail API. Marking the snapshot as incomplete.'
+      )
+      const saved = jest.mocked(saveProgress).mock.calls.at(-1)?.[1]
+      expect(saved?.stage).toBe('done')
+      expect(saved?.snapshotComplete).toBe(false)
+    }
+  )
+
+  it('stays complete when a detail lookup resolves a user without a birthdate', async () => {
+    const { client } = makeClient([{ users: ['1', '2'] }], false)
+
+    const result = await run(client)
+
+    expect(result.complete).toBe(true)
+    expect(result.output.totalWithBirthdate).toBe(0)
+    expect(console.warn).not.toHaveBeenCalled()
   })
 
   it.each([
