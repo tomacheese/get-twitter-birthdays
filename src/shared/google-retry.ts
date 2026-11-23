@@ -2,10 +2,11 @@
  * Error shape compatible with GaxiosError.
  */
 interface GaxiosErrorLike extends Error {
-  code?: string
+  code?: string | number
+  status?: number
   response?: {
     status?: number
-    headers?: Record<string, string | string[]>
+    headers?: Headers | Record<string, string | string[]>
   }
 }
 
@@ -20,17 +21,21 @@ function isRetryableGoogleError(error: unknown): boolean {
     return false
   }
 
-  if ('code' in error && typeof error.code === 'string') {
-    const gaxiosError = error as GaxiosErrorLike & { code: string }
-    const status = gaxiosError.response?.status
+  const gaxiosError = error as GaxiosErrorLike
+  const status =
+    gaxiosError.response?.status ??
+    gaxiosError.status ??
+    (typeof gaxiosError.code === 'number' ? gaxiosError.code : undefined)
 
-    if (status === 429 || (status && status >= 500)) {
-      return true
-    }
+  if (status === 429 || (status !== undefined && status >= 500)) {
+    return true
+  }
 
-    if (['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(gaxiosError.code)) {
-      return true
-    }
+  if (
+    typeof gaxiosError.code === 'string' &&
+    ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'].includes(gaxiosError.code)
+  ) {
+    return true
   }
 
   return false
@@ -46,7 +51,11 @@ function isRetryableGoogleError(error: unknown): boolean {
 function getRetryDelay(error: unknown, attempt: number): number {
   if (error instanceof Error && 'response' in error) {
     const gaxiosError = error as GaxiosErrorLike
-    const retryAfter = gaxiosError.response?.headers?.['retry-after']
+    const headers = gaxiosError.response?.headers
+    const retryAfter =
+      headers instanceof Headers
+        ? headers.get('retry-after')
+        : headers?.['retry-after']
 
     if (retryAfter) {
       const retryAfterValue = Array.isArray(retryAfter)
