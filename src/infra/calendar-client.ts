@@ -1,4 +1,5 @@
 import { google } from 'googleapis'
+import { createHash } from 'node:crypto'
 // eslint-disable-next-line camelcase
 import type { calendar_v3, Auth } from 'googleapis'
 import type { BirthdateInfo } from '../shared/types'
@@ -104,7 +105,9 @@ export async function createCalendarEvent(
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
   const { startDate, endDate } = formatBirthdateAsDateRange(birthdate)
 
+  const eventId = createHash('sha256').update(userId).digest('hex')
   const event: CalendarEvent = {
+    id: eventId,
     summary: `${name}(@${screenName})の誕生日`,
     description: profileUrl,
     start: {
@@ -121,12 +124,46 @@ export async function createCalendarEvent(
     },
   }
 
-  const response = await withGoogleRetry(async () => {
-    return await calendar.events.insert({
-      calendarId: GOOGLE_CALENDAR_ID,
-      requestBody: event,
+  let response
+  try {
+    response = await withGoogleRetry(async () => {
+      return await calendar.events.insert({
+        calendarId: GOOGLE_CALENDAR_ID,
+        requestBody: event,
+      })
     })
-  })
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !('response' in error) ||
+      typeof error.response !== 'object' ||
+      error.response === null ||
+      !('status' in error.response) ||
+      error.response.status !== 409
+    ) {
+      throw error
+    }
+
+    const existing = await withGoogleRetry(async () => {
+      return await calendar.events.get({
+        calendarId: GOOGLE_CALENDAR_ID,
+        eventId,
+      })
+    })
+    if (
+      existing.data.id !== event.id ||
+      existing.data.extendedProperties?.private?.twitterUserId !== userId
+    ) {
+      throw new Error('❌ Conflicting calendar event does not match the user')
+    }
+    response = await withGoogleRetry(async () => {
+      return await calendar.events.update({
+        calendarId: GOOGLE_CALENDAR_ID,
+        eventId,
+        requestBody: { ...event, status: 'confirmed' },
+      })
+    })
+  }
 
   if (!response.data.id) {
     throw new Error('❌ Failed to get the event ID')
